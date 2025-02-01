@@ -7,6 +7,32 @@ st.title(":green-background[Wyjścia Melanże]")
 
 tab1, tab2 = st.tabs(["Ankieta","Wykresiki"])
 
+# Funkcja dialogowa do edycji odpowiedzi
+@st.dialog("Edytuj odpowiedzi", width="large")
+def edit_answers():
+    current_answers = st.session_state.results[selected_person][selected_venue]
+    new_answers = {}
+    with st.form(key="survey_edit_form"):
+        for entry in current_answers:
+            cat = entry["KATEGORIA"]
+            new_value = st.slider(
+                f"Wartość dla kategorii: {cat}",
+                min_value=0.0,
+                max_value=7.5,
+                value=entry["WARTOŚĆ"],
+                step=0.5,
+                format="%.1f"
+            )
+            new_answers[cat] = new_value
+        submitted = st.form_submit_button("Zapisz zmiany")
+        if submitted:
+            # Aktualizacja wyników dla wybranej osoby i miejscówki
+            st.session_state.results[selected_person][selected_venue] = [
+                {"KATEGORIA": cat, "WARTOŚĆ": new_answers[cat]} for cat in categories
+            ]
+            st.success("Odpowiedzi zaktualizowane!")
+            st.rerun()  # Zamknięcie dialogu i odświeżenie aplikacji
+
 with tab1:
     # Lista osób, miejscówek oraz kategorii ankiety
     persons = ("Bartek", "Maciek", "Bacper")
@@ -40,31 +66,10 @@ with tab1:
 
     # Pobieramy aktualne dane dla wybranej pary
     current_answers = st.session_state.results[selected_person][selected_venue]
-
-    # Expander do edycji odpowiedzi
-    with st.expander("Edytuj odpowiedzi"):
-        with st.form(key="survey_edit_form"):
-            new_answers = {}
-            for entry in current_answers:
-                cat = entry["KATEGORIA"]
-                # Używamy aktualnej wartości z DataFrame jako domyślnej w number_input
-                new_value = st.slider(
-                    f"Wartość dla kategorii: {cat}",
-                    min_value=0.0,
-                    max_value=7.5,
-                    value=entry["WARTOŚĆ"],  # Domyślnie bierze wartość z DataFrame
-                    step=0.5,
-                    format="%.1f"
-                )
-                new_answers[cat] = new_value
-            submitted = st.form_submit_button("Zapisz zmiany")
-            if submitted:
-                # Aktualizujemy wyniki dla wybranej osoby i miejscówki
-                st.session_state.results[selected_person][selected_venue] = [
-                    {"KATEGORIA": cat, "WARTOŚĆ": new_answers[cat]} for cat in categories
-                ]
-                st.success("Odpowiedzi zaktualizowane!")
-                st.rerun()  # Odświeżenie strony, aby pokazać zmiany
+    # Inicjalizacja stanu expandera, jeśli jeszcze nie istnieje
+    # Przycisk do otwarcia okna dialogowego
+    if st.button("Edytuj odpowiedzi"):
+        edit_answers()
 
     # Budujemy finalny DataFrame ze wszystkich wyników tylko dla wybranej osoby i miejscówki
     rows = []
@@ -107,7 +112,6 @@ with tab2:
         df_all = pd.DataFrame(rows)
         st.subheader("Pełny DataFrame z wynikami")
         st.dataframe(df_all)
-
         # Wykres - średnia wartość dla każdej kategorii
         avg_values = df_all.groupby("KATEGORIA")["WARTOŚĆ"].mean().reset_index()
         st.subheader("Średnia wartość dla każdej kategorii")
