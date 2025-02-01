@@ -8,7 +8,7 @@ st.title(":green-background[Wyjścia Melanże]")
 tab1, tab2 = st.tabs(["Ankieta","Wykresiki"])
 
 # Funkcja dialogowa do edycji odpowiedzi
-@st.dialog("Edytuj odpowiedzi", width="large")
+@st.dialog("Edytuj odpowiedzi", width="small")
 def edit_answers():
     current_answers = st.session_state.results[selected_person][selected_venue]
     new_answers = {}
@@ -16,12 +16,13 @@ def edit_answers():
         for entry in current_answers:
             cat = entry["KATEGORIA"]
             new_value = st.slider(
-                f"Wartość dla kategorii: {cat}",
+                f":green-background[{cat}]",
                 min_value=0.0,
                 max_value=7.5,
                 value=entry["WARTOŚĆ"],
                 step=0.5,
-                format="%.1f"
+                format="%.1f",
+                label_visibility="visible",
             )
             new_answers[cat] = new_value
         submitted = st.form_submit_button("Zapisz zmiany")
@@ -57,8 +58,8 @@ with tab1:
             for person in persons
         }
 
-    selected_person = st.selectbox("Wybierz osobę", persons)
-    selected_venue = st.selectbox("Wybierz miejscówkę", venues)
+    selected_person = st.selectbox(":violet-background[Wybierz osobę]", persons)
+    selected_venue = st.selectbox(":violet-background[Wybierz miejscówkę]", venues)
 
     # Upewniamy się, że dla wybranej pary mamy już dane
     if st.session_state.results[selected_person][selected_venue] is None:
@@ -91,6 +92,7 @@ with tab1:
 
     if rows:
         df = pd.DataFrame(rows)
+        df = df.drop(columns=["OSOBA", "MIEJSCÓWKA"])
         st.dataframe(df)
     else:
         st.info("Brak wyników ankiety dla wybranej osoby i miejscówki.")
