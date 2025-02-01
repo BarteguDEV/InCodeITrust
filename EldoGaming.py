@@ -13,7 +13,7 @@ option = st.selectbox(
     ("SKUNSTREFA", "PIZZA", "KFC"),
 )
 
-c1,c2,c3 = st.columns(3)
+c1,c2,c3 = st.columns([0.5,0.5,3,])
 with c1:
     st.caption(f":green-background[Oceny dla {person} z {option}]")
     st.code("2")
