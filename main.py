@@ -18,16 +18,20 @@ pages = {
 
 # Inicjalizacja Firebase (tylko raz)
 if not firebase_admin._apps:
-    # Pobierz konfigurację Firebase z secrets.toml
     firebase_config = st.secrets["firebase"]
     
-    # Konwertuj zawartość service_account_key (która jest zapisana jako string) na słownik
-    service_account_info = json.loads(firebase_config["service_account_key"])
-    
-    # Inicjalizacja poświadczeń
+    # 🔎 Debugowanie: wyświetl fragment klucza, aby sprawdzić, czy wygląda poprawnie
+    st.write("🔍 Pierwsze 100 znaków klucza:", firebase_config["service_account_key"][:100])
+
+    # Konwersja stringa JSON do słownika
+    try:
+        service_account_info = json.loads(firebase_config["service_account_key"])
+    except json.JSONDecodeError as e:
+        st.error(f"❌ Błąd dekodowania JSON: {e}")
+        st.stop()
+
     cred = credentials.Certificate(service_account_info)
-    
-    # Inicjalizacja Firebase z pobranym URL bazy danych
+
     firebase_admin.initialize_app(cred, {
         'databaseURL': firebase_config["database_url"]
     })
