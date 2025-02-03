@@ -12,22 +12,6 @@ st.caption('Projekt: "Kim Pan Był" v.4  Współfinansowany przez własną kiesz
 
 tab1, tab2 = st.tabs(["Ankieta", "Wykresiki"])
 
-# Inicjalizacja Firebase (tylko raz)
-if not firebase_admin._apps:
-    # Pobierz konfigurację Firebase z secrets.toml
-    firebase_config = st.secrets["firebase"]
-    
-    # Konwertuj zawartość service_account_key (która jest zapisana jako string) na słownik
-    service_account_info = json.loads(firebase_config["service_account_key"])
-    
-    # Inicjalizacja poświadczeń
-    cred = credentials.Certificate(service_account_info)
-    
-    # Inicjalizacja Firebase z pobranym URL bazy danych
-    firebase_admin.initialize_app(cred, {
-        'databaseURL': firebase_config["database_url"]
-    })
-
 #! Funkcje pomocnicze 
 def compute_average_points(answers):
     # Oblicza średnią z punktów dla kategorii (pomijając te, które mają być liczone automatycznie)
