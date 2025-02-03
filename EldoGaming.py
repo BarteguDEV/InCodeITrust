@@ -154,50 +154,51 @@ with tab1:
                 ),
             },
             hide_index=True,
+            disabled=["KATEGORIA"],
             )
 
-# with tab2:
-#     # Zbieranie wszystkich danych z session_state
-#     rows = []
-#     for person, venues_dict in st.session_state.results.items():
-#         for venue, answers_list in venues_dict.items():
-#             for entry in answers_list:
-#                 rows.append({
-#                     "OSOBA": person,
-#                     "MIEJSCÓWKA": venue,
-#                     "KATEGORIA": entry["KATEGORIA"],
-#                     "WARTOŚĆ": entry["WARTOŚĆ"]
-#                 })
+with tab2:
+    # Zbieranie wszystkich danych z session_state
+    rows = []
+    for person, venues_dict in st.session_state.results.items():
+        for venue, answers_list in venues_dict.items():
+            for entry in answers_list:
+                rows.append({
+                    "OSOBA": person,
+                    "MIEJSCÓWKA": venue,
+                    "KATEGORIA": entry["KATEGORIA"],
+                    "WARTOŚĆ": entry["WARTOŚĆ"]
+                })
 
-#     if rows:
-#         df_all = pd.DataFrame(rows)
-#         st.subheader("Pełny DataFrame z wynikami")
-#         st.dataframe(df_all)
-#         # Wykres - średnia wartość dla każdej kategorii
-#         avg_values = df_all.groupby("KATEGORIA")["WARTOŚĆ"].mean().reset_index()
-#         st.subheader("Średnia wartość dla każdej kategorii")
-#         fig, ax = plt.subplots()
-#         sns.barplot(x="KATEGORIA", y="WARTOŚĆ", data=avg_values, ax=ax)
-#         ax.set_title("Średnia ocena dla każdej kategorii")
-#         plt.xticks(rotation=45)
-#         st.pyplot(fig)
+    if rows:
+        df_all = pd.DataFrame(rows)
+        st.subheader("Pełny DataFrame z wynikami")
+        st.dataframe(df_all)
+        # Wykres - średnia wartość dla każdej kategorii
+        avg_values = df_all.groupby("KATEGORIA")["WARTOŚĆ"].mean().reset_index()
+        st.subheader("Średnia wartość dla każdej kategorii")
+        fig, ax = plt.subplots()
+        sns.barplot(x="KATEGORIA", y="WARTOŚĆ", data=avg_values, ax=ax)
+        ax.set_title("Średnia ocena dla każdej kategorii")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
 
-#         # Wykres - średnia wartość dla każdej osoby
-#         avg_person_values = df_all.groupby("OSOBA")["WARTOŚĆ"].mean().reset_index()
-#         st.subheader("Średnia wartość dla każdej osoby")
-#         fig, ax = plt.subplots()
-#         sns.barplot(x="OSOBA", y="WARTOŚĆ", data=avg_person_values, ax=ax)
-#         ax.set_title("Średnia ocena dla każdej osoby")
-#         plt.xticks(rotation=45)
-#         st.pyplot(fig)
+        # Wykres - średnia wartość dla każdej osoby
+        avg_person_values = df_all.groupby("OSOBA")["WARTOŚĆ"].mean().reset_index()
+        st.subheader("Średnia wartość dla każdej osoby")
+        fig, ax = plt.subplots()
+        sns.barplot(x="OSOBA", y="WARTOŚĆ", data=avg_person_values, ax=ax)
+        ax.set_title("Średnia ocena dla każdej osoby")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
 
-#         # Wykres - średnia wartość dla każdej miejscówki
-#         avg_venue_values = df_all.groupby("MIEJSCÓWKA")["WARTOŚĆ"].mean().reset_index()
-#         st.subheader("Średnia wartość dla każdej miejscówki")
-#         fig, ax = plt.subplots()
-#         sns.barplot(x="MIEJSCÓWKA", y="WARTOŚĆ", data=avg_venue_values, ax=ax)
-#         ax.set_title("Średnia ocena dla każdej miejscówki")
-#         plt.xticks(rotation=45)
-#         st.pyplot(fig)
-#     else:
-        # st.info("Brak wyników do analizy.")
+        # Wykres - średnia wartość dla każdej miejscówki
+        avg_venue_values = df_all.groupby("MIEJSCÓWKA")["WARTOŚĆ"].mean().reset_index()
+        st.subheader("Średnia wartość dla każdej miejscówki")
+        fig, ax = plt.subplots()
+        sns.barplot(x="MIEJSCÓWKA", y="WARTOŚĆ", data=avg_venue_values, ax=ax)
+        ax.set_title("Średnia ocena dla każdej miejscówki")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
+    else:
+        st.info("Brak wyników do analizy.")
