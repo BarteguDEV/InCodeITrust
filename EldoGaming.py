@@ -2,9 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import json
-from firebase_admin import credentials, db
-import firebase_admin
+import numpy as np
 
 st.set_page_config(layout="wide")
 st.title(":green-background[Wyjścia Melanże]")
@@ -172,10 +170,14 @@ with tab2:
 
     if rows:
         df_all = pd.DataFrame(rows)
-        st.subheader("Pełny DataFrame z wynikami")
-        st.dataframe(df_all)
-        # Wykres - średnia wartość dla każdej kategorii
+        # Średnie wartości dla kategorii, osób, miejscówek
         avg_values = df_all.groupby("KATEGORIA")["WARTOŚĆ"].mean().reset_index()
+        avg_person_values = df_all.groupby("OSOBA")["WARTOŚĆ"].mean().reset_index()
+        avg_venue_values = df_all.groupby("MIEJSCÓWKA")["WARTOŚĆ"].mean().reset_index()
+
+        st.title("📊 Analiza wyników ankiety")
+
+        # Wykres - średnia wartość dla każdej kategorii
         st.subheader("Średnia wartość dla każdej kategorii")
         fig, ax = plt.subplots()
         sns.barplot(x="KATEGORIA", y="WARTOŚĆ", data=avg_values, ax=ax)
@@ -184,7 +186,6 @@ with tab2:
         st.pyplot(fig)
 
         # Wykres - średnia wartość dla każdej osoby
-        avg_person_values = df_all.groupby("OSOBA")["WARTOŚĆ"].mean().reset_index()
         st.subheader("Średnia wartość dla każdej osoby")
         fig, ax = plt.subplots()
         sns.barplot(x="OSOBA", y="WARTOŚĆ", data=avg_person_values, ax=ax)
@@ -193,12 +194,72 @@ with tab2:
         st.pyplot(fig)
 
         # Wykres - średnia wartość dla każdej miejscówki
-        avg_venue_values = df_all.groupby("MIEJSCÓWKA")["WARTOŚĆ"].mean().reset_index()
         st.subheader("Średnia wartość dla każdej miejscówki")
         fig, ax = plt.subplots()
         sns.barplot(x="MIEJSCÓWKA", y="WARTOŚĆ", data=avg_venue_values, ax=ax)
         ax.set_title("Średnia ocena dla każdej miejscówki")
         plt.xticks(rotation=45)
         st.pyplot(fig)
+
+        # Wykres radarowy
+        st.subheader("Oceny dla każdej kategorii – wykres radarowy")
+        categories = list(avg_values["KATEGORIA"])
+        values = avg_values["WARTOŚĆ"].tolist()
+        values += values[:1]
+        angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
+        angles += angles[:1]
+
+        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+        ax.fill(angles, values, color='red', alpha=0.25)
+        ax.plot(angles, values, color='red', linewidth=2)
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(categories, fontsize=10)
+        ax.set_yticklabels([])
+        st.pyplot(fig)
+
+        # Wykres pudełkowy (Boxplot)
+        st.subheader("Boxplot ocen w kategoriach")
+        fig, ax = plt.subplots()
+        sns.boxplot(x="KATEGORIA", y="WARTOŚĆ", data=df_all, ax=ax)
+        ax.set_title("Rozkład ocen w każdej kategorii")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
+
+        # Wykres punktowy (Swarmplot)
+        st.subheader("Rozkład ocen indywidualnych – wykres punktowy")
+        fig, ax = plt.subplots()
+        sns.swarmplot(x="KATEGORIA", y="WARTOŚĆ", data=df_all, ax=ax)
+        ax.set_title("Rozkład ocen indywidualnych")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
+
+        # Mapa cieplna (Heatmap) – Korelacje między kategoriami
+        st.subheader("Mapa cieplna korelacji ocen")
+        corr_matrix = df_all.pivot_table(index="OSOBA", columns="KATEGORIA", values="WARTOŚĆ").corr()
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
+        ax.set_title("Korelacje między kategoriami")
+        st.pyplot(fig)
+
+        st.title("📊 Analiza ocen – kto nie lubi wychodzić na miasto?")
+
+        # 1️⃣ Obliczamy średnie oceny każdej osoby
+        avg_person_values = df_all.groupby("OSOBA")["WARTOŚĆ"].mean().reset_index()
+        worst_person = avg_person_values.loc[avg_person_values["WARTOŚĆ"].idxmin()]  # Osoba z najniższą średnią
+
+        st.subheader(f"🔍 Osoba, którą męcza te wyjścia i woli siedzieć w domu to... ❌ **{worst_person['OSOBA']}** z średnią oceną **{worst_person['WARTOŚĆ']:.2f}**")
+
+        # 2️⃣ Wykres średnich ocen osób
+        fig, ax = plt.subplots()
+        sns.barplot(x="OSOBA", y="WARTOŚĆ", data=avg_person_values, ax=ax, palette="rocket")
+        ax.set_title("Średnia ocena dla każdej osoby", color="white")
+        ax.set_facecolor("#121212")
+        fig.patch.set_facecolor("#121212")
+        ax.tick_params(colors="white")
+        plt.xticks(rotation=45, color="white")
+        plt.yticks(color="white")
+        st.pyplot(fig)
+
     else:
         st.info("Brak wyników do analizy.")
