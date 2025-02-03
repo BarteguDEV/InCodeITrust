@@ -8,7 +8,7 @@ import firebase_admin
 
 st.set_page_config(layout="wide")
 st.title(":green-background[Wyjścia Melanże]")
-st.caption('Projekt: "Kim Pan Był" v.4  Współfinansowany przez własną kieszeń.  Proszę uzupełniać na bieżąco || Skala ocen od 0-7,5')
+st.caption('Projekt: "Kim Pan Był" v.5  Współfinansowany przez własną kieszeń. Proszę uzupełniać na bieżąco || Skala ocen od 0-7,5')
 
 tab1, tab2 = st.tabs(["Ankieta", "Wykresiki"])
 
@@ -87,8 +87,8 @@ with tab1:
         "ŚREDNIA Z MIEJSCÓWKI"
     ]
 
-    selected_person = st.selectbox(":violet-background[Wybierz osobę]", persons)
-    selected_venue = st.selectbox(":violet-background[Wybierz miejscówkę]", venues)
+    selected_person = st.selectbox(":green-background[Wybierz osobę]", persons)
+    selected_venue = st.selectbox(":green-background[Wybierz miejscówkę]", venues)
 
     # Inicjalizacja stanu aplikacji – jeśli już istnieje, nie nadpisujemy go
     if "results" not in st.session_state:
@@ -129,7 +129,7 @@ with tab1:
         current_answers.append({"KATEGORIA": "ŚREDNIA Z MIEJSCÓWKI", "WARTOŚĆ": avg_miejscowka})
 
     # Przycisk otwierający okno dialogowe do edycji
-    if st.button("Edytuj odpowiedzi"):
+    if st.button(":rainbow[Edytuj odpowiedzi]"):
         edit_answers()
 
 
