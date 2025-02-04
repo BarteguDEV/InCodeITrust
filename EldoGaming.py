@@ -96,14 +96,14 @@ with tab1:
     for person in persons:
         if person not in st.session_state.results:
             st.session_state.results[person] = {}
-    for venue in venues:
-        if venue not in st.session_state.results[person]:
-            ref = db.reference(f'results/{person}/{venue}')
-            fetched_data = ref.get()
-            if fetched_data:
-                st.session_state.results[person][venue] = fetched_data
-            else:
-                st.session_state.results[person][venue] = [{"KATEGORIA": cat, "WARTOŚĆ": 0.0} for cat in categories]
+        for venue in venues:
+            if venue not in st.session_state.results[person]:
+                ref = db.reference(f'results/{person}/{venue}')
+                fetched_data = ref.get()
+                if fetched_data:
+                    st.session_state.results[person][venue] = fetched_data
+                else:
+                    st.session_state.results[person][venue] = [{"KATEGORIA": cat, "WARTOŚĆ": 0.0} for cat in categories]
 
     current_answers = st.session_state.results[selected_person][selected_venue]
     # Aktualizacja "ŚREDNIA Z PUNKTÓW" dla bieżącej pary (dla danego użytkownika)
