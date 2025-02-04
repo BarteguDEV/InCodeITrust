@@ -74,7 +74,7 @@ def edit_answers():
 
 with tab1:
     # Lista opcji
-    persons = ("Bartek", "Maciek", "Bacper", "Darek")
+    persons = ("Bartek", "Maciek", "Kaper", "Darek", "Mały", "Popag")
     venues = ("SKUNSTREFA", "PIZZA", "KFC")
     categories = [
         "FOOD", 
@@ -93,16 +93,17 @@ with tab1:
     if "results" not in st.session_state:
         st.session_state.results = {}
 
-    # Dla wybranej osoby i miejscówki pobieramy dane z Firebase tylko, jeśli nie ma ich już w st.session_state
-    if selected_person not in st.session_state.results:
-        st.session_state.results[selected_person] = {}
-    if selected_venue not in st.session_state.results[selected_person]:
-        ref = db.reference(f'results/{selected_person}/{selected_venue}')
-        fetched_data = ref.get()
-        if fetched_data:
-            st.session_state.results[selected_person][selected_venue] = fetched_data
-        else:
-            st.session_state.results[selected_person][selected_venue] = [{"KATEGORIA": cat, "WARTOŚĆ": 0.0} for cat in categories]
+    for person in persons:
+        if person not in st.session_state.results:
+            st.session_state.results[person] = {}
+    for venue in venues:
+        if venue not in st.session_state.results[person]:
+            ref = db.reference(f'results/{person}/{venue}')
+            fetched_data = ref.get()
+            if fetched_data:
+                st.session_state.results[person][venue] = fetched_data
+            else:
+                st.session_state.results[person][venue] = [{"KATEGORIA": cat, "WARTOŚĆ": 0.0} for cat in categories]
 
     current_answers = st.session_state.results[selected_person][selected_venue]
     # Aktualizacja "ŚREDNIA Z PUNKTÓW" dla bieżącej pary (dla danego użytkownika)
@@ -229,7 +230,7 @@ with tab2:
         # Wykres punktowy (Swarmplot)
         st.subheader("Rozkład ocen indywidualnych – wykres punktowy")
         fig, ax = plt.subplots()
-        sns.swarmplot(x="KATEGORIA", y="WARTOŚĆ", data=df_all, ax=ax)
+        sns.stripplot(x="KATEGORIA", y="WARTOŚĆ", data=df_all, ax=ax, jitter=True)
         ax.set_title("Rozkład ocen indywidualnych")
         plt.xticks(rotation=45)
         st.pyplot(fig)
@@ -253,7 +254,18 @@ with tab2:
 
         # 2️⃣ Wykres średnich ocen osób
         fig, ax = plt.subplots()
-        sns.barplot(x="OSOBA", y="WARTOŚĆ", data=avg_person_values, ax=ax, palette="rocket")
+        sns.barplot(
+            x="OSOBA",
+            y="WARTOŚĆ",
+            data=avg_person_values,
+            ax=ax,
+            hue="OSOBA",
+            palette="rocket"
+        )
+        legend = ax.get_legend()
+        if legend is not None:
+            legend.remove()  # Usunięcie legendy, jeśli istnieje
+
         ax.set_title("Średnia ocena dla każdej osoby", color="white")
         ax.set_facecolor("#121212")
         fig.patch.set_facecolor("#121212")
