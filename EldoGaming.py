@@ -140,6 +140,17 @@ with tab1:
             "KATEGORIA": entry["KATEGORIA"],
             "WARTOŚĆ": entry["WARTOŚĆ"]
         })
+    ordered_categories = [
+    "FOOD", 
+    "WYSTRÓJ", 
+    "OBSŁUGA", 
+    "PERFORMANCE PER PRICE", 
+    "INNE", 
+    "ŚREDNIA Z PUNKTÓW", 
+    "ŚREDNIA Z MIEJSCÓWKI"
+    ]
+    rows = sorted(rows, key=lambda x: ordered_categories.index(x["KATEGORIA"]))
+    
     if rows:
         df = pd.DataFrame(rows)
         dfa = st.data_editor(
