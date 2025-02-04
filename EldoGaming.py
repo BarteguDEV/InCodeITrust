@@ -89,6 +89,21 @@ with tab1:
     selected_person = st.selectbox(":green-background[Wybierz osobę]", persons)
     selected_venue = st.selectbox(":green-background[Wybierz miejscówkę]", venues)
 
+
+    # Słownik mapujący miejscówki na URL-e obrazków
+    venue_images = {
+        "SKUNSTREFA": "https://images.pexels.com/photos/274192/pexels-photo-274192.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+        "PIZZA": "https://images.pexels.com/photos/1449793/pexels-photo-1449793.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+        "KFC": "https://images.pexels.com/photos/15811711/pexels-photo-15811711/free-photo-of-alkohol-slupek-pret-bar.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    }
+
+    # Pobranie URL-a obrazu dla wybranej miejscówki (domyślnie pusty jeśli brak wpisu)
+    image_url = venue_images.get(selected_venue, None)
+
+    # Wyświetlenie obrazu tylko jeśli URL istnieje
+    if image_url:
+        st.image(image_url, width=500)
+
     # Inicjalizacja stanu aplikacji – jeśli już istnieje, nie nadpisujemy go
     if "results" not in st.session_state:
         st.session_state.results = {}
@@ -150,7 +165,7 @@ with tab1:
     "ŚREDNIA Z MIEJSCÓWKI"
     ]
     rows = sorted(rows, key=lambda x: ordered_categories.index(x["KATEGORIA"]))
-    
+
     if rows:
         df = pd.DataFrame(rows)
         dfa = st.data_editor(
