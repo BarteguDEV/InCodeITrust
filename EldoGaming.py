@@ -74,7 +74,7 @@ def edit_answers():
 
 with tab1:
     # Lista opcji
-    persons = ("Bartek", "Maciek", "Kaper", "Darek", "Mały", "Popag")
+    persons = ("Bartek", "Maciek", "Kacper", "Darek", "Mały", "Popag")
     venues = ("SKUNSTREFA", "PIZZA", "KFC")
     categories = [
         "FOOD", 
