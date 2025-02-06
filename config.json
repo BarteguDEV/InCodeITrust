@@ -1,0 +1,24 @@
+{
+    "persons": [
+        "Bartek",
+        "Maciek",
+        "Kacper",
+        "Darek",
+        "Mały",
+        "Popag",
+        "BARTEG"
+    ],
+    "venues": [
+        "SKUNSTREFA",
+        "PIZZA",
+        "KFC",
+        "EloRapy"
+    ],
+    "categories": [
+        "FOOD",
+        "WYSTRÓJ",
+        "OBSŁUGA",
+        "PERFORMANCE PER PRICE",
+        "INNE"
+    ]
+}

@@ -1,53 +1,91 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from firebase_admin import db
 import seaborn as sns
 import numpy as np
+from supabase import create_client, Client
+import json
 
-st.set_page_config(layout="wide")
+
+# Wczytaj dane konfiguracyjne
+with open("config.json", "r", encoding="utf-8") as f:
+    config = json.load(f)
+
+
+# Wczytaj dane z sekcji secrets
+SUPABASE_URL = st.secrets["supabase"]["url"]
+SUPABASE_KEY = st.secrets["supabase"]["api_key"]
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+bucket = supabase.storage.from_('Streamlit-BG-bucket')
+
+
 st.title(":green-background[Wyjścia Melanże]")
 st.caption('Projekt: "Kim Pan Był" v.5  Współfinansowany przez własną kieszeń. Proszę uzupełniać na bieżąco || Skala ocen od 0-7,5')
 
 tab1, tab2 = st.tabs(["Ankieta", "Wykresiki"])
 
-#! Funkcje pomocnicze 
-def compute_average_points(answers):
-    # Oblicza średnią z punktów dla kategorii (pomijając te, które mają być liczone automatycznie)
-    vals = [entry["WARTOŚĆ"] for entry in answers 
-            if entry["KATEGORIA"] not in ["ŚREDNIA Z PUNKTÓW", "ŚREDNIA Z MIEJSCÓWKI"]]
-    if vals:
-        return round(sum(vals) / len(vals),2)
-    return 0.0
-def compute_average_place(selected_venue):
-    # Zbieramy wartości "ŚREDNIA Z PUNKTÓW" dla wszystkich użytkowników, którzy mają wpis dla danej miejscówki.
-    values = []
-    for person, venues_dict in st.session_state.results.items():
-        if selected_venue in venues_dict:
-            answers = venues_dict[selected_venue]
-            # Wyszukujemy wpis dla "ŚREDNIA Z PUNKTÓW"
-            for entry in answers:
-                if entry.get("KATEGORIA") == "ŚREDNIA Z PUNKTÓW":
-                    values.append(entry.get("WARTOŚĆ", 0.0))
-                    break
-    if values:
-        return round(sum(values) / len(values), 2)
-    return 0.0
-#!
+def display_venue_image(selected_venue, bucket, venues: list):
+    """
+    Funkcja sprawdza, czy dla wybranej miejscówki istnieje plik w bucketcie. 
+    Jeśli tak – pobiera publiczny URL i wyświetla zdjęcie, 
+    w przeciwnym razie informuje, że zdjęcie nie istnieje.
+    
+    :param selected_venue: Nazwa miejscówki (np. "SKUNSTREFA")
+    :param bucket: Obiekt bucket z Supabase (np. supabase.storage.from_('nazwa-bucketu'))
+    :param venues: Lista dostępnych miejscówek (używana np. przy selectboxie)
+    """
+    if selected_venue:
+        # Nazwa pliku i ścieżka – zakładamy, że zdjęcie zapisujemy jako "{selected_venue}.jpg"
+        file_name = f"{selected_venue}.jpg"
+        file_path = f"uploads/{file_name}"
+        
+        # Pobieramy listę plików znajdujących się w folderze "uploads"
+        files = bucket.list("uploads")
+        # Zakładamy, że pliki zwracane są jako lista słowników, gdzie klucz "name" zawiera nazwę pliku.
+        file_exists = any(file.get("name") == file_name for file in files)
+        
+        if file_exists:
+            image_url = bucket.get_public_url(file_path)
+            st.image(image_url, width=500)
+        else:
+            st.info("Brak zdjęcia dla wybranej miejscówki.")
 
-#? Funkcja dialogowa do edycji odpowiedzi
+# Funkcja dialogowa do edycji odpowiedzi
 @st.dialog("Edytuj odpowiedzi", width="small")
 def edit_answers():
+    # Inicjalizuj wartości w session_state, jeśli nie istnieją
+    if "selected_person" not in st.session_state or st.session_state.selected_person is None:
+        st.session_state.selected_person = persons[0]  # Domyślnie pierwsza osoba
+
+    if "selected_venue" not in st.session_state or st.session_state.selected_venue is None:
+        st.session_state.selected_venue = venues[0]  # Domyślnie pierwsza miejscówka
+
+    # Aktualizacja stanu w session_state tylko wtedy, gdy wartości zostały zmienione
+    if selected_person != st.session_state.selected_person:
+        st.session_state.selected_person = selected_person
+
+    if selected_venue != st.session_state.selected_venue:
+        st.session_state.selected_venue = selected_venue
+
+    # Sprawdzanie, czy wybrana osoba i miejsce są poprawnie przypisane
+    if selected_person is None or selected_venue is None:
+        st.error("Nie wybrano osoby lub miejsca. Proszę wybrać je przed edytowaniem.")
+        return  # Kończy działanie funkcji, jeśli nie ma wybranej osoby lub miejsca
+
+    # Sprawdzenie, czy istnieją dane dla wybranej osoby i miejsca
+    if selected_person not in st.session_state.results or selected_venue not in st.session_state.results[selected_person]:
+        st.error("Brak danych dla wybranej osoby i miejsca.")
+        return  # Kończy działanie funkcji, jeśli brak danych
+
     current_answers = st.session_state.results[selected_person][selected_venue]
+    
     new_answers = {}
     with st.form(key="survey_edit_form"):
         for entry in current_answers:
             cat = entry["KATEGORIA"]
-            # Jeśli kategoria to "ŚREDNIA Z PUNKTÓW" lub "ŚREDNIA Z MIEJSCÓWKI",
-            # pomijamy tworzenie suwaka i zachowujemy dotychczasową wartość.
-            if cat in ["ŚREDNIA Z PUNKTÓW", "ŚREDNIA Z MIEJSCÓWKI"]:
-                new_answers[cat] = entry["WARTOŚĆ"]
-            else:
+            if cat not in ["ŚREDNIA Z PUNKTÓW", "ŚREDNIA Z MIEJSCÓWKI"]:
+                # Ustalamy domyślną wartość slajdera
                 default_val = float(entry["WARTOŚĆ"]) if isinstance(entry["WARTOŚĆ"], (int, float)) else 0.0
                 new_value = st.slider(
                     f":green-background[{cat}]",
@@ -57,52 +95,53 @@ def edit_answers():
                     step=0.5,
                     format="%.1f",
                     label_visibility="visible",
+                    key=f"slider_{cat}"  # Unikalny klucz dla każdego slidera
                 )
                 new_answers[cat] = new_value
 
+
         submitted = st.form_submit_button("Zapisz zmiany")
         if submitted:
-            # Aktualizacja wyników w st.session_state dla wybranej pary
-            st.session_state.results[selected_person][selected_venue] = [
-                {"KATEGORIA": cat, "WARTOŚĆ": new_answers[cat]} for cat in categories
-            ]
-            st.success("Odpowiedzi zaktualizowane!")
-            # Aktualizacja tylko danego węzła w Firebase
-            node_ref = db.reference(f'results/{selected_person}/{selected_venue}')
-            node_ref.set(st.session_state.results[selected_person][selected_venue])
-            st.rerun()  # Zamknięcie dialogu i odświeżenie aplikacji
+            try:
+                # Aktualizacja wyników w session_state
+                st.session_state.results[selected_person][selected_venue] = [
+                    {"KATEGORIA": cat, "WARTOŚĆ": new_answers[cat]} for cat in new_answers
+                ]
+
+                # Zapis do Supabase
+                for cat, val in new_answers.items():
+                    # Sprawdzamy, czy rekord istnieje w bazie
+                    response = supabase.table("results").select("*").eq("person", selected_person).eq("venue", selected_venue).eq("category", cat).execute()
+
+                    if response.data:
+                        # Rekord istnieje, więc wykonujemy aktualizację
+                        update_response = supabase.table("results").update({
+                            "value": val,
+                            "initialized": True  # Możemy również ustawić flagę, jeśli chcesz
+                        }).eq("person", selected_person).eq("venue", selected_venue).eq("category", cat).execute()
+                st.rerun()  # Odświeżenie strony po zapisaniu
+            except Exception as e:
+                st.error(f"Wystąpił błąd: {e}")
+
+
+
+
 
 with tab1:
     # Lista opcji
-    persons = ("Bartek", "Maciek", "Kacper", "Darek", "Mały", "Popag")
+    persons = config.get("persons", [])
     venues = ("SKUNSTREFA", "PIZZA", "KFC")
     categories = [
         "FOOD", 
         "WYSTRÓJ", 
         "OBSŁUGA", 
         "PERFORMANCE PER PRICE", 
-        "INNE", 
-        "ŚREDNIA Z PUNKTÓW", 
-        "ŚREDNIA Z MIEJSCÓWKI"
+        "INNE"
     ]
 
     selected_person = st.selectbox(":green-background[Wybierz osobę]", persons)
     selected_venue = st.selectbox(":green-background[Wybierz miejscówkę]", venues)
 
-
-    # Słownik mapujący miejscówki na URL-e obrazków
-    venue_images = {
-        "SKUNSTREFA": "https://images.pexels.com/photos/274192/pexels-photo-274192.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-        "PIZZA": "https://images.pexels.com/photos/1449793/pexels-photo-1449793.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-        "KFC": "https://images.pexels.com/photos/15811711/pexels-photo-15811711/free-photo-of-alkohol-slupek-pret-bar.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-    }
-
-    # Pobranie URL-a obrazu dla wybranej miejscówki (domyślnie pusty jeśli brak wpisu)
-    image_url = venue_images.get(selected_venue, None)
-
-    # Wyświetlenie obrazu tylko jeśli URL istnieje
-    if image_url:
-        st.image(image_url, width=500)
 
     # Inicjalizacja stanu aplikacji – jeśli już istnieje, nie nadpisujemy go
     if "results" not in st.session_state:
@@ -111,42 +150,26 @@ with tab1:
     for person in persons:
         if person not in st.session_state.results:
             st.session_state.results[person] = {}
+
         for venue in venues:
             if venue not in st.session_state.results[person]:
-                ref = db.reference(f'results/{person}/{venue}')
-                fetched_data = ref.get()
-                if fetched_data:
-                    st.session_state.results[person][venue] = fetched_data
+                # Pobranie danych z Supabase
+                response = supabase.table("results").select("category, value").eq("person", person).eq("venue", venue).execute()
+
+                if response.data:
+                    st.session_state.results[person][venue] = [
+                        {"KATEGORIA": entry["category"], "WARTOŚĆ": entry["value"]} for entry in response.data
+                    ]
                 else:
                     st.session_state.results[person][venue] = [{"KATEGORIA": cat, "WARTOŚĆ": 0.0} for cat in categories]
 
     current_answers = st.session_state.results[selected_person][selected_venue]
-    # Aktualizacja "ŚREDNIA Z PUNKTÓW" dla bieżącej pary (dla danego użytkownika)
-    avg_punkty = compute_average_points(current_answers)
-    updated = False
-    for entry in current_answers:
-        if entry["KATEGORIA"] == "ŚREDNIA Z PUNKTÓW":
-            entry["WARTOŚĆ"] = avg_punkty
-            updated = True
-            break
-    if not updated:
-        current_answers.append({"KATEGORIA": "ŚREDNIA Z PUNKTÓW", "WARTOŚĆ": avg_punkty})
 
-    # Obliczenie "ŚREDNIA Z MIEJSCÓWKI" jako średniej z "ŚREDNIA Z PUNKTÓW" dla wszystkich użytkowników (dla danej miejscówki)
-    avg_miejscowka = compute_average_place(selected_venue)
-    updated_place = False
-    for entry in current_answers:
-        if entry["KATEGORIA"] == "ŚREDNIA Z MIEJSCÓWKI":
-            entry["WARTOŚĆ"] = avg_miejscowka
-            updated_place = True
-            break
-    if not updated_place:
-        current_answers.append({"KATEGORIA": "ŚREDNIA Z MIEJSCÓWKI", "WARTOŚĆ": avg_miejscowka})
+    display_venue_image(selected_venue,bucket, venues)
 
-    # Przycisk otwierający okno dialogowe do edycji
+
     if st.button(":rainbow[Edytuj odpowiedzi]"):
         edit_answers()
-
 
     # Budowanie finalnego DataFrame tylko dla wybranej pary
     rows = []
@@ -156,15 +179,13 @@ with tab1:
             "WARTOŚĆ": entry["WARTOŚĆ"]
         })
     ordered_categories = [
-    "FOOD", 
-    "WYSTRÓJ", 
-    "OBSŁUGA", 
-    "PERFORMANCE PER PRICE", 
-    "INNE", 
-    "ŚREDNIA Z PUNKTÓW", 
-    "ŚREDNIA Z MIEJSCÓWKI"
+        "FOOD", 
+        "WYSTRÓJ", 
+        "OBSŁUGA", 
+        "PERFORMANCE PER PRICE", 
+        "INNE"
     ]
-    rows = sorted(rows, key=lambda x: ordered_categories.index(x["KATEGORIA"]))
+    rows = sorted(rows, key=lambda x: ordered_categories.index(x["KATEGORIA"]) if x["KATEGORIA"] in ordered_categories else float('inf'))
 
     if rows:
         df = pd.DataFrame(rows)
@@ -176,129 +197,9 @@ with tab1:
                     help="Wartość wyrażona jako progress bar",
                     format="%.1f",
                     min_value=0,
-                    max_value=7.5,  # Ustaw odpowiedni zakres – tu przykład do 7.5
+                    max_value=7.5,
                 ),
             },
             hide_index=True,
             disabled=["KATEGORIA"],
-            )
-
-with tab2:
-    # Zbieranie wszystkich danych z session_state
-    rows = []
-    for person, venues_dict in st.session_state.results.items():
-        for venue, answers_list in venues_dict.items():
-            for entry in answers_list:
-                rows.append({
-                    "OSOBA": person,
-                    "MIEJSCÓWKA": venue,
-                    "KATEGORIA": entry["KATEGORIA"],
-                    "WARTOŚĆ": entry["WARTOŚĆ"]
-                })
-
-    if rows:
-        df_all = pd.DataFrame(rows)
-        # Średnie wartości dla kategorii, osób, miejscówek
-        avg_values = df_all.groupby("KATEGORIA")["WARTOŚĆ"].mean().reset_index()
-        avg_person_values = df_all.groupby("OSOBA")["WARTOŚĆ"].mean().reset_index()
-        avg_venue_values = df_all.groupby("MIEJSCÓWKA")["WARTOŚĆ"].mean().reset_index()
-
-        st.title("📊 Analiza wyników ankiety")
-
-        # Wykres - średnia wartość dla każdej kategorii
-        st.subheader("Średnia wartość dla każdej kategorii")
-        fig, ax = plt.subplots()
-        sns.barplot(x="KATEGORIA", y="WARTOŚĆ", data=avg_values, ax=ax)
-        ax.set_title("Średnia ocena dla każdej kategorii")
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
-
-        # Wykres - średnia wartość dla każdej osoby
-        st.subheader("Średnia wartość dla każdej osoby")
-        fig, ax = plt.subplots()
-        sns.barplot(x="OSOBA", y="WARTOŚĆ", data=avg_person_values, ax=ax)
-        ax.set_title("Średnia ocena dla każdej osoby")
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
-
-        # Wykres - średnia wartość dla każdej miejscówki
-        st.subheader("Średnia wartość dla każdej miejscówki")
-        fig, ax = plt.subplots()
-        sns.barplot(x="MIEJSCÓWKA", y="WARTOŚĆ", data=avg_venue_values, ax=ax)
-        ax.set_title("Średnia ocena dla każdej miejscówki")
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
-
-        # Wykres radarowy
-        st.subheader("Oceny dla każdej kategorii – wykres radarowy")
-        categories = list(avg_values["KATEGORIA"])
-        values = avg_values["WARTOŚĆ"].tolist()
-        values += values[:1]
-        angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
-        angles += angles[:1]
-
-        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
-        ax.fill(angles, values, color='red', alpha=0.25)
-        ax.plot(angles, values, color='red', linewidth=2)
-        ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(categories, fontsize=10)
-        ax.set_yticklabels([])
-        st.pyplot(fig)
-
-        # Wykres pudełkowy (Boxplot)
-        st.subheader("Boxplot ocen w kategoriach")
-        fig, ax = plt.subplots()
-        sns.boxplot(x="KATEGORIA", y="WARTOŚĆ", data=df_all, ax=ax)
-        ax.set_title("Rozkład ocen w każdej kategorii")
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
-
-        # Wykres punktowy (Swarmplot)
-        st.subheader("Rozkład ocen indywidualnych – wykres punktowy")
-        fig, ax = plt.subplots()
-        sns.stripplot(x="KATEGORIA", y="WARTOŚĆ", data=df_all, ax=ax, jitter=True)
-        ax.set_title("Rozkład ocen indywidualnych")
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
-
-        # Mapa cieplna (Heatmap) – Korelacje między kategoriami
-        st.subheader("Mapa cieplna korelacji ocen")
-        corr_matrix = df_all.pivot_table(index="OSOBA", columns="KATEGORIA", values="WARTOŚĆ").corr()
-
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
-        ax.set_title("Korelacje między kategoriami")
-        st.pyplot(fig)
-
-        st.title("📊 Analiza ocen – kto nie lubi wychodzić na miasto?")
-
-        # 1️⃣ Obliczamy średnie oceny każdej osoby
-        avg_person_values = df_all.groupby("OSOBA")["WARTOŚĆ"].mean().reset_index()
-        worst_person = avg_person_values.loc[avg_person_values["WARTOŚĆ"].idxmin()]  # Osoba z najniższą średnią
-
-        st.subheader(f"🔍 Osoba, którą męcza te wyjścia i woli siedzieć w domu to... ❌ **{worst_person['OSOBA']}** z średnią oceną **{worst_person['WARTOŚĆ']:.2f}**")
-
-        # 2️⃣ Wykres średnich ocen osób
-        fig, ax = plt.subplots()
-        sns.barplot(
-            x="OSOBA",
-            y="WARTOŚĆ",
-            data=avg_person_values,
-            ax=ax,
-            hue="OSOBA",
-            palette="rocket"
         )
-        legend = ax.get_legend()
-        if legend is not None:
-            legend.remove()  # Usunięcie legendy, jeśli istnieje
-
-        ax.set_title("Średnia ocena dla każdej osoby", color="white")
-        ax.set_facecolor("#121212")
-        fig.patch.set_facecolor("#121212")
-        ax.tick_params(colors="white")
-        plt.xticks(rotation=45, color="white")
-        plt.yticks(color="white")
-        st.pyplot(fig)
-
-    else:
-        st.info("Brak wyników do analizy.")
