@@ -47,7 +47,7 @@ def display_venue_image(selected_venue, bucket, venues: list):
         
         if file_exists:
             image_url = bucket.get_public_url(file_path)
-            st.image(image_url, width=200)
+            st.image(image_url, width=500)
         else:
             st.info("Brak zdjęcia dla wybranej miejscówki.")
 
