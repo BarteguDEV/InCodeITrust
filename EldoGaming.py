@@ -130,14 +130,8 @@ def edit_answers():
 with tab1:
     # Lista opcji
     persons = config.get("persons", [])
-    venues = ("SKUNSTREFA", "PIZZA", "KFC")
-    categories = [
-        "FOOD", 
-        "WYSTRÓJ", 
-        "OBSŁUGA", 
-        "PERFORMANCE PER PRICE", 
-        "INNE"
-    ]
+    venues = config.get("venues", [])
+    categories = config.get("categories", [])
 
     selected_person = st.selectbox(":green-background[Wybierz osobę]", persons)
     selected_venue = st.selectbox(":green-background[Wybierz miejscówkę]", venues)

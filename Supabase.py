@@ -127,7 +127,6 @@ with t_users:
         add_user("persons", new_person)
         initialize_records_if_needed()
         st.success(f"Dodano: {new_person}")
-        st.rerun()  # Przeładowanie aplikacji, aby wczytać nowe dane
 
     # Usuwanie użytkownika
     st.subheader(":red-background[Usuń użytkownika]")
@@ -162,7 +161,6 @@ with t_venues:
         elif add_venue(new_venue):
             initialize_records_if_needed()
             st.success(f"Miejscówka '{new_venue}' została dodana.")
-            st.rerun()  # Przeładuj aplikację, aby wczytać zaktualizowaną konfigurację
         else:
             st.info("Taka miejscówka już istnieje.")
 
