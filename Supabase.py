@@ -122,26 +122,26 @@ categories = config.get("categories", [])
 with t_users:
     # Dodawanie nowego użytkownika
     st.subheader(":green-background[Dodaj użytkownika]")
-    new_person = st.text_input(":green-background[Nowy użytkownik]")
+    new_person = st.text_input(":green-background[Nowy użytkownik]", label_visibility="collapsed")
     if st.button("Dodaj użytkownika"):
         add_user("persons", new_person)
         initialize_records_if_needed()
         st.success(f"Dodano: {new_person}")
-
+    st.divider()
     # Usuwanie użytkownika
     st.subheader(":red-background[Usuń użytkownika]")
-    user_to_remove = st.selectbox(":red-background[Wybierz użytkownika do usunięcia]", persons)
+    user_to_remove = st.selectbox(":red-background[Wybierz użytkownika do usunięcia]", persons, label_visibility="collapsed")
     if st.button("Usuń użytkownika"):
         if remove_user(user_to_remove):
             st.success(f"Użytkownik '{user_to_remove}' został usunięty.")
             st.rerun()  # Odświeżenie, aby wczytać zmienioną konfigurację
         else:
             st.error("Nie udało się usunąć użytkownika.")
-
+    st.divider()
     # Modyfikacja użytkownika
     st.subheader(":orange-background[Modyfikuj użytkownika]")
-    old_user = st.selectbox(":orange-background[Wybierz użytkownika do modyfikacji]", persons, key="old_user")
-    new_user = st.text_input(":orange-background[Podaj nową nazwę użytkownika]", key="new_user")
+    old_user = st.selectbox("Wybierz użytkownika do modyfikacji", persons, key="old_user")
+    new_user = st.text_input("Podaj nową nazwę użytkownika", key="new_user")
     if st.button("Zaktualizuj użytkownika"):
         if new_user.strip() == "":
             st.error("Nowa nazwa nie może być pusta!")
@@ -154,7 +154,7 @@ with t_users:
 with t_venues:
     # Dodawanie nowej miejscówki
     st.subheader(":green-background[Dodaj miejscówkę]")
-    new_venue = st.text_input(":green-background[Nowa miejscówka]")
+    new_venue = st.text_input(":green-background[Nowa miejscówka]", label_visibility="collapsed")
     if st.button("Dodaj miejscówkę"):
         if new_venue.strip() == "":
             st.error("Nazwa miejscówki nie może być pusta!")
@@ -163,10 +163,10 @@ with t_venues:
             st.success(f"Miejscówka '{new_venue}' została dodana.")
         else:
             st.info("Taka miejscówka już istnieje.")
-
+    st.divider()
     # Usuwanie miejscówki
     st.subheader(":red-background[Usuń miejscówkę]")
-    venue_to_remove = st.selectbox(":red-background[Wybierz miejscówkę do usunięcia]", venues)
+    venue_to_remove = st.selectbox(":red-background[Wybierz miejscówkę do usunięcia]", venues, label_visibility="collapsed")
     if st.button("Usuń miejscówkę"):
         if remove_venue(venue_to_remove):
             st.success(f"Miejscówka '{venue_to_remove}' została usunięta.")
@@ -176,15 +176,16 @@ with t_venues:
 
 with t_venues:
     # Lista dostępnych miejscówek
-    venues_img = ["SKUNSTREFA", "PIZZA", "KFC"]
+    venues_img = config.get("venues", [])
 
     # Inicjalizacja słownika w session_state
     if "venue_images" not in st.session_state:
         st.session_state.venue_images = {venue: "" for venue in venues_img}
 
     # Sekcja do wrzucania zdjęć
+    st.divider()
     st.subheader("Dodaj zdjęcie do miejscówki")
-    selected_venue = st.selectbox("Wybierz miejscówkę", venues)
+    selected_venue = st.selectbox("Wybierz miejscówkę", venues, label_visibility="collapsed")
     uploaded_file = st.file_uploader("Prześlij zdjęcie", type=["png", "jpg", "jpeg"])
 
     if uploaded_file is not None and selected_venue:

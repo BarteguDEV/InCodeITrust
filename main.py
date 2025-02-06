@@ -27,7 +27,8 @@ pages = {
 # Jeśli hasło jest poprawne, dodajemy zakładkę "Database"
 if st.session_state.admin_logged_in:
     pages["Database"] = [
-        st.Page("Supabase.py", title="Supabase", icon="🔗")
+        st.Page("Supabase.py", title="Admin", icon="🔒"),
+        st.Page("debug.py", title="debug", icon="🔒")
     ]
 
 # Nawigacja
