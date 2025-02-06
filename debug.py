@@ -1,38 +1,46 @@
 import streamlit as st
-import geocoder
+import time
 
-# Funkcja do pobierania lokalizacji użytkownika
-def get_location():
-    g = geocoder.ip('me')  # Pobiera lokalizację na podstawie IP
-    if g.ok:
-        return g.latlng  # Zwraca szerokość i długość geograficzną
+# HTML i JavaScript do pobrania lokalizacji użytkownika
+html_code = """
+<script>
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                let coords = position.coords.latitude + "," + position.coords.longitude;
+                let queryParams = new URLSearchParams(window.location.search);
+                queryParams.set("location", coords);
+                window.location.search = queryParams.toString();
+            },
+            function(error) {
+                console.log("Błąd pobierania lokalizacji: " + error.message);
+            }
+        );
+    } else {
+        console.log("Geolokalizacja nie jest wspierana przez przeglądarkę.");
+    }
+}
+</script>
+<button onclick="getLocation()">📍 Pobierz moją lokalizację</button>
+"""
+
+st.components.v1.html(html_code)
+
+# Pobranie współrzędnych z query params
+query_params = st.query_params
+location = query_params.get("location")
+
+if location:
+    lat, lon = map(float, location.split(","))
+    
+    # Sprawdzenie, czy lokalizacja jest w Warszawie
+    if 52.0 <= lat <= 52.4 and 20.8 <= lon <= 21.3:
+        st.success(f"Twoja lokalizacja: Latitude = {lat}, Longitude = {lon} (Warszawa)")
     else:
-        st.error("Nie udało się pobrać lokalizacji.")
-        return None
+        st.warning(f"Twoja lokalizacja: Latitude = {lat}, Longitude = {lon} (Poza Warszawą)")
 
-# Funkcja do sprawdzania, czy lokalizacja jest w Warszawie
-def is_in_warsaw(lat, lon):
-    # Granice Warszawy
-    lat_min, lat_max = 52.0, 52.4
-    lon_min, lon_max = 20.9, 21.3
-    
-    return lat_min <= lat <= lat_max and lon_min <= lon <= lon_max
-
-# Dodanie zgody na pobranie lokalizacji
-st.title("Pobierz lokalizację użytkownika")
-st.write("Aby uzyskać dokładną lokalizację, musisz wyrazić zgodę.")
-
-if st.button("Pobierz lokalizację"):
-    location = get_location()
-    
-    if location:
-        lat, lon = location
-        st.write(f"Twoja lokalizacja: Latitude = {lat}, Longitude = {lon}")
-        
-        # Sprawdzenie, czy lokalizacja jest w Warszawie
-        if is_in_warsaw(lat, lon):
-            st.write("Twoja lokalizacja znajduje się w Warszawie!")
-            # Wyświetlanie mapy z lokalizacją
-            st.map([{"lat": lat, "lon": lon}])
-        else:
-            st.warning("Twoja lokalizacja nie znajduje się w Warszawie.")
+    # Wyświetlenie mapy
+    st.map([{"lat": lat, "lon": lon}])
+else:
+    st.info("Kliknij przycisk, aby pobrać swoją lokalizację.")
