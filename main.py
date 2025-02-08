@@ -1,5 +1,6 @@
 import streamlit as st
 st.set_page_config(page_title="EldoGaming", page_icon="🎮", layout="wide")
+st.logo("barteguapp.png")
 
 # Strona boczna do logowania
 if "admin_logged_in" not in st.session_state:

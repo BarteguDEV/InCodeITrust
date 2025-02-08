@@ -5,6 +5,7 @@ import seaborn as sns
 import numpy as np
 from supabase import create_client, Client
 import json
+from datetime import datetime, timedelta
 
 
 # Wczytaj dane konfiguracyjne
@@ -20,7 +21,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 bucket = supabase.storage.from_('Streamlit-BG-bucket')
 
 
-st.title(":green-background[Wyjścia Melanże]")
+st.title(":green[Wyjścia Melanże]")
 st.caption('Projekt: "Kim Pan Był" v.5  Współfinansowany przez własną kieszeń. Proszę uzupełniać na bieżąco || Skala ocen od 0-7,5')
 
 tab1, tab2 = st.tabs(["Ankieta", "Wykresiki"])
@@ -123,7 +124,34 @@ def edit_answers():
             except Exception as e:
                 st.error(f"Wystąpił błąd: {e}")
 
-
+# Funkcja dialogowa do dodawania komentarza
+@st.dialog("Dodaj komentarz", width="small")
+def add_comment_dialog():
+    # Upewnij się, że wybrana miejscówka jest ustawiona; domyślnie pierwsza z listy
+    if "selected_venue" not in st.session_state or st.session_state.selected_venue is None:
+        st.session_state.selected_venue = venues[0]
+    # Inicjalizacja struktury komentarzy w session_state, jeśli jeszcze nie istnieje
+    if "comments" not in st.session_state:
+        st.session_state.comments = {venue: [] for venue in venues}
+    
+    with st.form(key="comment_form"):
+        new_comment = st.text_area("Wpisz swój komentarz", key="new_comment")
+        submitted = st.form_submit_button("Zapisz komentarz")
+        if submitted:
+            if new_comment.strip():
+                # Dodaj komentarz do lokalnej struktury (session_state)
+                st.session_state.comments[st.session_state.selected_venue].append(new_comment)
+                
+                # Wstaw komentarz do bazy Supabase
+                response = supabase.table("comments").insert({
+                    "venue": st.session_state.selected_venue,
+                    "comment": new_comment
+                }).execute()
+                st.success("Komentarz dodany pomyślnie.")
+                
+                st.rerun()  # Odświeżenie strony po zapisaniu
+            else:
+                st.warning("Komentarz nie może być pusty!")
 
 
 
@@ -161,9 +189,14 @@ with tab1:
 
     display_venue_image(selected_venue,bucket, venues)
 
+    c1,c2,c3 = st.columns([1,1,1])
+    with c1:
+        if st.button(":blue[Edytuj odpowiedzi]"):
+            edit_answers()
 
-    if st.button(":rainbow[Edytuj odpowiedzi]"):
-        edit_answers()
+    with c1:
+        if st.button(":blue[Dodaj komentarz]"):
+            add_comment_dialog()
 
     # Budowanie finalnego DataFrame tylko dla wybranej pary
     rows = []
@@ -197,3 +230,35 @@ with tab1:
             hide_index=True,
             disabled=["KATEGORIA"],
         )
+
+st.divider()
+# Funkcja do pobierania komentarzy z Supabase
+def fetch_comments(venue):
+    response = supabase.table("comments").select("id, comment, created_at").eq("venue", venue).order("created_at", desc=True).execute()
+    return response.data if response.data else []
+
+# Funkcja do formatowania daty
+def format_datetime(timestamp):
+    try:
+        dt_obj = datetime.strptime(timestamp[:19], "%Y-%m-%dT%H:%M:%S")  # Konwersja ISO na datetime
+        dt_obj = dt_obj + timedelta(hours=1)  # Dodanie 1 godziny
+        return dt_obj.strftime("%Y-%m-%d %H:%M:%S")  # Formatowanie daty
+    except ValueError:
+        return "Nieznana data"
+
+# Pobranie i wyświetlenie komentarzy
+def display_comments(venue):
+    st.subheader(f"💬 Komentarze dla {venue}")
+    comments = fetch_comments(venue)
+
+    if comments:
+        for comment in comments:
+            with st.container():
+                st.write(f"🗨️ {comment['comment']}")
+                formatted_date = format_datetime(comment['created_at'])
+                st.caption(f"📅 {formatted_date}")
+    else:
+        st.info("Brak komentarzy dla tej miejscówki. Bądź pierwszym, który doda komentarz! 🎉")
+
+# Wywołanie funkcji wyświetlającej komentarze
+display_comments(selected_venue)
