@@ -21,7 +21,8 @@ pages = {
         st.Page("Welcome.py", title="Welcome", icon="🏠")
     ],
     "Apps": [
-        st.Page("EldoGaming.py", title="EldoGaming", icon="🎮")
+        st.Page("EldoGaming.py", title="EldoGaming", icon="🎮"),
+        st.Page("losowanie.py", title="Losowanie", icon="🎲"),
     ]
 }
 

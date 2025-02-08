@@ -11,7 +11,7 @@ st.markdown("""
 ### 📌 O aplikacji:
 🔹 Na pasku bocznym znajdziesz dostępne moduły.  
 🔹 Jeśli chcesz zobaczyć **wyniki ankiety**, przejdź do zakładki **:green[EldoGaming]**.  
-🔹 Jeśli chcesz zarządzać bazą danych, przejdź do zakładki **:orange[Managment]**.  
+🔹 Jeśli chcesz zarządzać bazą danych, wpisz hasło admina na pasku bocznym
 
 📢 <u>Zapraszam do korzystania z aplikacji!</u>  
 """, unsafe_allow_html=True)
@@ -22,7 +22,7 @@ st.markdown("---")
 st.markdown("""
 ### 💰<u>Wsparcie projektu</u>💰
 Projekt współfinansowany przez **własną kieszeń**.  
-Jeśli chcesz wesprzeć rozwój, **wiesz jaki numer**. 😎  
+Jeśli chcesz wesprzeć rozwój aplikacji, wiesz, co robić. 📲 😎  
 """, unsafe_allow_html=True)
 
 st.markdown("<p style='text-align: center; color: green; font-weight: bold;'><u>Nie pozdrawiam!</u> 🚀</p>", unsafe_allow_html=True)
