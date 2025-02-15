@@ -1,4 +1,3 @@
 matplotlib
 seaborn
 supabase
-geocoder

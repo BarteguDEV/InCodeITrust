@@ -5,6 +5,7 @@ from supabase import create_client, Client
 SUPABASE_URL = st.secrets["supabase"]["url"]
 SUPABASE_KEY = st.secrets["supabase"]["api_key"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+bucket = supabase.storage.from_("Streamlit-BG-bucket")
 
 def get_persons():
     """Pobiera unikalną listę osób z tabeli 'results'."""
@@ -77,6 +78,38 @@ def initialize_records_if_needed(new_person=None, new_venue=None):
                     }).execute()
                     st.write(f"Rekord {person} - {new_venue} - {cat} dodany do bazy.")
 
+def upload_venue_image(selected_venue, bucket):
+    if "uploaded" not in st.session_state:
+        st.session_state["uploaded"] = False
+
+    if not st.session_state["uploaded"]:  
+        uploaded_file = st.file_uploader("Wybierz zdjęcie", type=["jpg", "png", "jpeg"])
+
+        if uploaded_file:
+            file_name = f"{selected_venue}.jpg"  
+            file_path = f"uploads/{file_name}"  
+
+            try:
+                # Usuń istniejący plik (jeśli istnieje)
+                bucket.remove([file_path])
+
+                # Prześlij nowy plik
+                response = bucket.upload(file_path, uploaded_file.read())
+
+                # Sprawdzamy, czy plik się wrzucił
+                if hasattr(response, "full_path") or hasattr(response, "path"):
+                    st.success("Zdjęcie zostało przesłane pomyślnie!")
+                    st.session_state["uploaded"] = True  # Ustawienie flagi, aby ukryć file_uploader
+                    st.rerun()  # Restart strony, ale tylko raz!
+                else:
+                    st.error(f"Błąd podczas przesyłania pliku: {response}")
+
+            except Exception as e:
+                st.error(f"Błąd podczas przesyłania pliku: {e}")
+    else:
+        st.info("Zdjęcie już zostało przesłane! Odśwież stronę, jeśli chcesz dodać nowe.")
+
+
 # Tworzymy zakładki
 t_users, t_venues, t_category = st.tabs(["Użytkownicy", "Miejscówki", "Kategorie"])
 
@@ -138,10 +171,31 @@ with t_venues:
     else:
         st.info("Brak miejscówek w bazie.")
 
+    st.divider()
+    st.subheader(":orange-background[Dodaj zdjęcie]")
+    venues = get_venues()
+    if venues:
+        selected_venue = st.selectbox("Wybierz miejscówkę", venues, label_visibility="collapsed")
+        
+        # Wywołanie funkcji do uploadu zdjęcia
+        upload_venue_image(selected_venue, bucket)
+        
+    else:
+        st.info("Brak dostępnych miejscówek w bazie.")
+
+
 with t_category:
-    st.subheader("Aktualny stan bazy:")
+    st.subheader(":green-background[Results]")
     # Wyświetlamy podsumowanie tabeli 'results'
     response = supabase.table("results").select("*").execute()
+    if response.data:
+        st.json(response.data)
+    else:
+        st.info("Brak rekordów w bazie.")
+
+    st.subheader(":green-background[Comments]")
+    # Wyświetlamy podsumowanie tabeli 'results'
+    response = supabase.table("comments").select("*").execute()
     if response.data:
         st.json(response.data)
     else:

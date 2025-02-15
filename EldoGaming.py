@@ -79,7 +79,7 @@ def display_venue_image(selected_venue, bucket, venues: list):
             image_url = bucket.get_public_url(file_path)
             st.image(image_url, width=500)
         else:
-            st.warning(f"Brak zdjęcia dla miejscówki")
+            st.info(f"Brak zdjęcia dla miejscówki")
 
 @st.dialog("Edytuj odpowiedzi", width="small")
 def edit_answers():
@@ -164,6 +164,7 @@ def add_comment_dialog():
     with st.form(key="comment_form"):
         new_comment = st.text_area("Wpisz swój komentarz", key="new_comment")
         comment_user = st.selectbox("Wybierz użytkownika", persons, key="comment_user")
+        audio_value = st.audio_input("Record a voice message")
         submitted = st.form_submit_button("Zapisz komentarz")
         if submitted:
             if new_comment.strip():
