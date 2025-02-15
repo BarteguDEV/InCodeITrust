@@ -245,9 +245,8 @@ def display_comments(venue):
     if comments:
         for comment in comments:
             with st.container():
-                st.write(f"🗨️ {comment['comment']}")
                 formatted_date = format_datetime(comment["created_at"])
-                st.caption(f"📅 {formatted_date}")
+                st.caption(f"🗨️ {comment['comment']} | 📅 {formatted_date}")
     else:
         st.info("Brak komentarzy dla tej miejscówki. Bądź pierwszym, który doda komentarz! 🎉")
 
