@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import time
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -34,7 +35,7 @@ def get_categories():
     return []
 
 def fetch_comments(venue):
-    response = supabase.table("comments").select("id, comment, created_at") \
+    response = supabase.table("comments").select("id, comment, created_at, person") \
         .eq("venue", venue).order("created_at", desc=True).execute()
     return response.data if response.data else []
 
@@ -53,19 +54,11 @@ def display_comments(venue):
         for comment in comments:
             with st.container():
                 formatted_date = format_datetime(comment["created_at"])
-                st.caption(f"🗨️ {comment['comment']} | 📅 {formatted_date}")
+                user = comment.get("person", "Nieznany użytkownik")
+                st.caption(f"🤷 {user} ┃ 🗨️ {comment['comment']} ┃ 📅 {formatted_date}")
     else:
         st.info("Brak komentarzy dla tej miejscówki. Bądź pierwszym, który doda komentarz! 🎉")
 
-# Inicjalne pobranie list z bazy
-persons = get_persons()
-venues = get_venues()
-categories = get_categories()
-
-st.title(":green[Wyjścia Melanże]")
-st.caption('Projekt: "Kim Pan Był" v.5  Współfinansowany przez własną kieszeń. Proszę uzupełniać na bieżąco || Skala ocen od 0-7,5')
-
-tab1, tab2 = st.tabs(["Ankieta", "Wykresiki"])
 
 def display_venue_image(selected_venue, bucket, venues: list):
     """
@@ -158,7 +151,7 @@ def edit_answers():
 
 @st.dialog("Dodaj komentarz", width="small")
 def add_comment_dialog():
-    global venues
+    global venues, persons  # Upewnij się, że zmienna persons jest dostępna globalnie
     if "selected_venue" not in st.session_state or st.session_state.selected_venue is None:
         st.session_state.selected_venue = venues[0] if venues else None
     if "comments" not in st.session_state:
@@ -166,18 +159,31 @@ def add_comment_dialog():
     
     with st.form(key="comment_form"):
         new_comment = st.text_area("Wpisz swój komentarz", key="new_comment")
+        comment_user = st.selectbox("Wybierz użytkownika", persons, key="comment_user")
         submitted = st.form_submit_button("Zapisz komentarz")
         if submitted:
             if new_comment.strip():
                 st.session_state.comments[st.session_state.selected_venue].append(new_comment)
                 supabase.table("comments").insert({
                     "venue": st.session_state.selected_venue,
-                    "comment": new_comment
+                    "comment": new_comment,
+                    "person": comment_user  # Zapisanie wybranego użytkownika do kolumny 'person'
                 }).execute()
                 st.success("Komentarz dodany pomyślnie.")
+                time.sleep(1)
                 st.rerun()
             else:
                 st.warning("Komentarz nie może być pusty!")
+
+# Inicjalne pobranie list z bazy
+persons = get_persons()
+venues = get_venues()
+categories = get_categories()
+
+st.title(":green[Wyjścia Melanże]")
+st.caption('Projekt: "Kim Pan Był" v.5  Współfinansowany przez własną kieszeń. Proszę uzupełniać na bieżąco || Skala ocen od 0-7.5')
+
+tab1, tab2 = st.tabs(["Ankieta", "Wykresiki"])
 
 with tab1:
     # Pobierz aktualne dane z bazy
