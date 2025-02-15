@@ -79,7 +79,7 @@ def display_venue_image(selected_venue, bucket, venues: list):
             image_url = bucket.get_public_url(file_path)
             st.image(image_url, width=500)
         else:
-            st.info(f"Brak zdjęcia dla miejscówki - {selected_venue}")
+            st.warning(f"Brak zdjęcia dla miejscówki")
 
 @st.dialog("Edytuj odpowiedzi", width="small")
 def edit_answers():
@@ -195,7 +195,7 @@ with tab1:
     venues = get_venues()
     categories = get_categories()
 
-    selected_person = st.selectbox(":green-background[Wybierz osobę]", persons)
+    selected_person = st.segmented_control("person picker", persons, selection_mode="single", key="persons_pills", default=persons[0] if persons else '1', label_visibility="collapsed")
     selected_venue = st.selectbox(":green-background[Wybierz miejscówkę]", venues)
 
     # Zapisz wybrane wartości do session_state
