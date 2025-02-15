@@ -16,24 +16,28 @@ bucket = supabase.storage.from_("Streamlit-BG-bucket")
 
 
 # Funkcje pomocnicze do pobierania danych z bazy
+@st.cache_data(ttl=300)
 def get_persons():
     response = supabase.table("results").select("person").execute()
     if response.data:
         return sorted(list({row["person"] for row in response.data if row.get("person")}))
     return []
 
+@st.cache_data(ttl=300)
 def get_venues():
     response = supabase.table("results").select("venue").execute()
     if response.data:
         return sorted(list({row["venue"] for row in response.data if row.get("venue")}))
     return []
 
+@st.cache_data(ttl=300)
 def get_categories():
     response = supabase.table("results").select("category").execute()
     if response.data:
         return sorted(list({row["category"] for row in response.data if row.get("category")}))
     return []
 
+@st.cache_data(ttl=300)
 def fetch_comments(venue):
     response = supabase.table("comments").select("id, comment, created_at, person") \
         .eq("venue", venue).order("created_at", desc=True).execute()
