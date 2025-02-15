@@ -36,4 +36,3 @@ if st.session_state.admin_logged_in:
 # Nawigacja
 pg = st.navigation(pages)
 pg.run()
-st.sidebar.image("coding.gif")
