@@ -127,7 +127,7 @@ def edit_answers():
                             "value": val,
                             "initialized": True
                         }).eq("person", selected_person).eq("venue", selected_venue).eq("category", cat).execute()
-                st.experimental_rerun()
+                st.rerun()
             except Exception as e:
                 st.error(f"Wystąpił błąd: {e}")
 
@@ -151,7 +151,7 @@ def add_comment_dialog():
                     "comment": new_comment
                 }).execute()
                 st.success("Komentarz dodany pomyślnie.")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.warning("Komentarz nie może być pusty!")
 
@@ -193,13 +193,8 @@ with tab1:
 
     display_venue_image(selected_venue, bucket, venues)
 
-    c1, c2, c3 = st.columns([0.5, 1.1, 0.1])
-    with c1:
-        if st.button(":blue[Edytuj odpowiedzi]"):
-            edit_answers()
-    with c2:
-        if st.button(":blue[Dodaj komentarz]"):
-            add_comment_dialog()
+    if st.button(":blue[Edytuj odpowiedzi]"):
+        edit_answers()
 
     # Budowanie finalnego DataFrame tylko dla wybranej pary
     rows = []
@@ -230,6 +225,7 @@ with tab1:
 
 st.divider()
 
+
 def fetch_comments(venue):
     response = supabase.table("comments").select("id, comment, created_at") \
         .eq("venue", venue).order("created_at", desc=True).execute()
@@ -255,4 +251,6 @@ def display_comments(venue):
     else:
         st.info("Brak komentarzy dla tej miejscówki. Bądź pierwszym, który doda komentarz! 🎉")
 
+if st.button(":blue[Dodaj komentarz]"):
+    add_comment_dialog()
 display_comments(selected_venue)

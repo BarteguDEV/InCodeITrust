@@ -92,7 +92,7 @@ with t_users:
             # Dodajemy nowego użytkownika poprzez inicjalizację odpowiednich rekordów
             initialize_records_if_needed(new_person=new_person)
             st.success(f"Dodano: {new_person}")
-            st.experimental_rerun()  # Odświeżenie, aby pobrać aktualne dane
+            st.rerun()  # Odświeżenie, aby pobrać aktualne dane
 
     st.divider()
     st.subheader(":red-background[Usuń użytkownika]")
@@ -104,7 +104,7 @@ with t_users:
             delete_response = supabase.table("results").delete().eq("person", user_to_remove).execute()
             if delete_response.status_code == 200:
                 st.success(f"Użytkownik '{user_to_remove}' został usunięty.")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("Nie udało się usunąć użytkownika.")
     else:
@@ -121,7 +121,7 @@ with t_venues:
         else:
             initialize_records_if_needed(new_venue=new_venue)
             st.success(f"Miejscówka '{new_venue}' została dodana.")
-            st.experimental_rerun()
+            st.rerun()
     
     st.divider()
     st.subheader(":red-background[Usuń miejscówkę]")
@@ -132,7 +132,7 @@ with t_venues:
             delete_response = supabase.table("results").delete().eq("venue", venue_to_remove).execute()
             if delete_response.status_code == 200:
                 st.success(f"Miejscówka '{venue_to_remove}' została usunięta.")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("Nie udało się usunąć miejscówki.")
     else:
