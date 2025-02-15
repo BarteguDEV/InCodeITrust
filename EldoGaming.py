@@ -33,6 +33,30 @@ def get_categories():
         return sorted(list({row["category"] for row in response.data if row.get("category")}))
     return []
 
+def fetch_comments(venue):
+    response = supabase.table("comments").select("id, comment, created_at") \
+        .eq("venue", venue).order("created_at", desc=True).execute()
+    return response.data if response.data else []
+
+def format_datetime(timestamp):
+    try:
+        dt_obj = datetime.strptime(timestamp[:19], "%Y-%m-%dT%H:%M:%S")
+        dt_obj = dt_obj + timedelta(hours=1)
+        return dt_obj.strftime("%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return "Nieznana data"
+
+def display_comments(venue):
+    st.subheader(f"💬 Komentarze dla {venue}")
+    comments = fetch_comments(venue)
+    if comments:
+        for comment in comments:
+            with st.container():
+                formatted_date = format_datetime(comment["created_at"])
+                st.caption(f"🗨️ {comment['comment']} | 📅 {formatted_date}")
+    else:
+        st.info("Brak komentarzy dla tej miejscówki. Bądź pierwszym, który doda komentarz! 🎉")
+
 # Inicjalne pobranie list z bazy
 persons = get_persons()
 venues = get_venues()
@@ -222,34 +246,12 @@ with tab1:
             hide_index=True,
             disabled=["KATEGORIA"],
         )
+    st.divider()
 
-st.divider()
+with tab1:
+    if st.button(":blue[Dodaj komentarz]"):
+        add_comment_dialog()
+    display_comments(selected_venue)
 
-
-def fetch_comments(venue):
-    response = supabase.table("comments").select("id, comment, created_at") \
-        .eq("venue", venue).order("created_at", desc=True).execute()
-    return response.data if response.data else []
-
-def format_datetime(timestamp):
-    try:
-        dt_obj = datetime.strptime(timestamp[:19], "%Y-%m-%dT%H:%M:%S")
-        dt_obj = dt_obj + timedelta(hours=1)
-        return dt_obj.strftime("%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        return "Nieznana data"
-
-def display_comments(venue):
-    st.subheader(f"💬 Komentarze dla {venue}")
-    comments = fetch_comments(venue)
-    if comments:
-        for comment in comments:
-            with st.container():
-                formatted_date = format_datetime(comment["created_at"])
-                st.caption(f"🗨️ {comment['comment']} | 📅 {formatted_date}")
-    else:
-        st.info("Brak komentarzy dla tej miejscówki. Bądź pierwszym, który doda komentarz! 🎉")
-
-if st.button(":blue[Dodaj komentarz]"):
-    add_comment_dialog()
-display_comments(selected_venue)
+with tab2:
+    st.write("in progress")
