@@ -1,219 +1,148 @@
 import streamlit as st
-import os
-import json
 from supabase import create_client, Client
-import supabase
 
-CONFIG_FILE = "config.json"
-# Wczytaj dane z sekcji secrets
+# Wczytanie danych z sekcji secrets
 SUPABASE_URL = st.secrets["supabase"]["url"]
 SUPABASE_KEY = st.secrets["supabase"]["api_key"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+def get_persons():
+    """Pobiera unikalną listę osób z tabeli 'results'."""
+    response = supabase.table("results").select("person").execute()
+    if response.data:
+        return sorted(list({row["person"] for row in response.data if row.get("person")}))
+    return []
 
-def load_config():
-    """Wczytuje konfigurację z pliku JSON."""
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    else:
-        return {
-            "persons": [],
-            "venues": [],
-            "categories": []
-        }
+def get_venues():
+    """Pobiera unikalną listę miejscówek z tabeli 'results'."""
+    response = supabase.table("results").select("venue").execute()
+    if response.data:
+        return sorted(list({row["venue"] for row in response.data if row.get("venue")}))
+    return []
 
-def save_config(config):
-    """Zapisuje konfigurację do pliku JSON."""
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=4, ensure_ascii=False)
+def get_categories():
+    """Pobiera unikalną listę kategorii z tabeli 'results'."""
+    response = supabase.table("results").select("category").execute()
+    if response.data:
+        return sorted(list({row["category"] for row in response.data if row.get("category")}))
+    return []
 
-def add_user(list_name, item):
+def initialize_records_if_needed(new_person=None, new_venue=None):
     """
-    Dodaje element do wybranej listy w konfiguracji.
-    list_name: "persons", "venues" lub "categories"
-    item: element do dodania
+    Dla nowo dodanej osoby lub miejscówki inicjuje rekordy we wszystkich kombinacjach.
+    Jeśli dodajesz osobę, dla każdej istniejącej miejscówki i kategorii dodaj rekord.
+    Jeśli dodajesz miejscówkę, dla każdej istniejącej osoby i kategorii dodaj rekord.
     """
-    config = load_config()
-    if item not in config.get(list_name, []):
-        config[list_name].append(item)
-        save_config(config)
-
-
-def remove_user(user):
-    """
-    Usuwa użytkownika (element z listy "persons") z konfiguracji.
-    """
-    config = load_config()
-    if user in config.get("persons", []):
-        config["persons"].remove(user)
-        save_config(config)
-        return True
-    return False
-
-def update_user(old_user, new_user):
-    """
-    Modyfikuje istniejącego użytkownika.
-    Zamienia wartość old_user na new_user w liście "persons".
-    """
-    config = load_config()
-    persons = config.get("persons", [])
-    if old_user in persons:
-        index = persons.index(old_user)
-        persons[index] = new_user
-        save_config(config)
-        return True
-    return False
-
-def add_venue(venue):
-    """
-    Dodaje nową miejscówkę do listy 'venues' w konfiguracji.
-    Jeśli miejscówka już istnieje, nie zostanie dodana.
-    """
-    config = load_config()
-    if venue not in config.get("venues", []):
-        config["venues"].append(venue)
-        save_config(config)
-        return True
-    return False
-
-def remove_venue(venue):
-    """
-    Usuwa miejscówkę z listy 'venues' w konfiguracji.
-    """
-    config = load_config()
-    if venue in config.get("venues", []):
-        config["venues"].remove(venue)
-        save_config(config)
-        return True
-    return False
-
-def initialize_records_if_needed():
-    persons = config["persons"]
-    venues = config["venues"]
-    categories = config["categories"]
-    for person in persons:
+    persons = get_persons()
+    venues = get_venues()
+    categories = get_categories()
+    
+    if new_person:
+        # Inicjujemy rekordy dla nowej osoby we wszystkich miejscówkach i kategoriach
         for venue in venues:
             for cat in categories:
-                # Sprawdzamy, czy rekord z tymi danymi już istnieje i czy jest zainicjowany
-                response = supabase.table("results").select("*").eq("person", person).eq("venue", venue).eq("category", cat).execute()
-                if not response.data or response.data[0]["initialized"] == False:
-                    # Rekord nie istnieje lub nie jest zainicjowany, więc dodajemy go
+                response = supabase.table("results") \
+                    .select("*") \
+                    .eq("person", new_person) \
+                    .eq("venue", venue) \
+                    .eq("category", cat) \
+                    .execute()
+                if not response.data:
                     supabase.table("results").insert({
-                        "person": person,
+                        "person": new_person,
                         "venue": venue,
                         "category": cat,
-                        "value": 0.0,  # Domyślna wartość
-                        "initialized": True  # Oznaczamy rekord jako zainicjowany
+                        "value": 0.0,
+                        "initialized": True
                     }).execute()
-                    print(f"Rekord {person} - {venue} - {cat} został dodany do bazy!")
+                    st.write(f"Rekord {new_person} - {venue} - {cat} dodany do bazy.")
+    
+    if new_venue:
+        # Inicjujemy rekordy dla nowej miejscówki dla każdej osoby i kategorii
+        for person in persons:
+            for cat in categories:
+                response = supabase.table("results") \
+                    .select("*") \
+                    .eq("person", person) \
+                    .eq("venue", new_venue) \
+                    .eq("category", cat) \
+                    .execute()
+                if not response.data:
+                    supabase.table("results").insert({
+                        "person": person,
+                        "venue": new_venue,
+                        "category": cat,
+                        "value": 0.0,
+                        "initialized": True
+                    }).execute()
+                    st.write(f"Rekord {person} - {new_venue} - {cat} dodany do bazy.")
 
-
-# Wczytanie aktualnej konfiguracji
-config = load_config()
-
+# Tworzymy zakładki
 t_users, t_venues, t_category = st.tabs(["Użytkownicy", "Miejscówki", "Kategorie"])
-# Wczytanie aktualnej konfiguracji
-config = load_config()
-persons = config.get("persons", [])
-venues = config.get("venues", [])
-categories = config.get("categories", [])
 
 with t_users:
-    # Dodawanie nowego użytkownika
     st.subheader(":green-background[Dodaj użytkownika]")
-    new_person = st.text_input(":green-background[Nowy użytkownik]", label_visibility="collapsed")
+    new_person = st.text_input("Nowy użytkownik", label_visibility="collapsed")
     if st.button("Dodaj użytkownika"):
-        add_user("persons", new_person)
-        initialize_records_if_needed()
-        st.success(f"Dodano: {new_person}")
+        if new_person.strip() == "":
+            st.error("Nazwa użytkownika nie może być pusta!")
+        elif new_person in get_persons():
+            st.info("Taki użytkownik już istnieje.")
+        else:
+            # Dodajemy nowego użytkownika poprzez inicjalizację odpowiednich rekordów
+            initialize_records_if_needed(new_person=new_person)
+            st.success(f"Dodano: {new_person}")
+            st.experimental_rerun()  # Odświeżenie, aby pobrać aktualne dane
+
     st.divider()
-    # Usuwanie użytkownika
     st.subheader(":red-background[Usuń użytkownika]")
-    user_to_remove = st.selectbox(":red-background[Wybierz użytkownika do usunięcia]", persons, label_visibility="collapsed")
-    if st.button("Usuń użytkownika"):
-        if remove_user(user_to_remove):
-            st.success(f"Użytkownik '{user_to_remove}' został usunięty.")
-            st.rerun()  # Odświeżenie, aby wczytać zmienioną konfigurację
-        else:
-            st.error("Nie udało się usunąć użytkownika.")
-    st.divider()
-    # Modyfikacja użytkownika
-    st.subheader(":orange-background[Modyfikuj użytkownika]")
-    old_user = st.selectbox("Wybierz użytkownika do modyfikacji", persons, key="old_user")
-    new_user = st.text_input("Podaj nową nazwę użytkownika", key="new_user")
-    if st.button("Zaktualizuj użytkownika"):
-        if new_user.strip() == "":
-            st.error("Nowa nazwa nie może być pusta!")
-        elif config.update_user(old_user, new_user):
-            st.success(f"Użytkownik '{old_user}' został zmieniony na '{new_user}'.")
-            st.rerun()
-        else:
-            st.error("Nie udało się zaktualizować użytkownika.")
+    persons = get_persons()
+    if persons:
+        user_to_remove = st.selectbox("Wybierz użytkownika do usunięcia", persons, label_visibility="collapsed")
+        if st.button("Usuń użytkownika"):
+            # Przykładowo – usunięcie rekordu może oznaczać usunięcie wszystkich wpisów danej osoby
+            delete_response = supabase.table("results").delete().eq("person", user_to_remove).execute()
+            if delete_response.status_code == 200:
+                st.success(f"Użytkownik '{user_to_remove}' został usunięty.")
+                st.experimental_rerun()
+            else:
+                st.error("Nie udało się usunąć użytkownika.")
+    else:
+        st.info("Brak użytkowników w bazie.")
 
 with t_venues:
-    # Dodawanie nowej miejscówki
     st.subheader(":green-background[Dodaj miejscówkę]")
-    new_venue = st.text_input(":green-background[Nowa miejscówka]", label_visibility="collapsed")
+    new_venue = st.text_input("Nowa miejscówka", label_visibility="collapsed")
     if st.button("Dodaj miejscówkę"):
         if new_venue.strip() == "":
             st.error("Nazwa miejscówki nie może być pusta!")
-        elif add_venue(new_venue):
-            initialize_records_if_needed()
-            st.success(f"Miejscówka '{new_venue}' została dodana.")
-        else:
+        elif new_venue in get_venues():
             st.info("Taka miejscówka już istnieje.")
-    st.divider()
-    # Usuwanie miejscówki
-    st.subheader(":red-background[Usuń miejscówkę]")
-    venue_to_remove = st.selectbox(":red-background[Wybierz miejscówkę do usunięcia]", venues, label_visibility="collapsed")
-    if st.button("Usuń miejscówkę"):
-        if remove_venue(venue_to_remove):
-            st.success(f"Miejscówka '{venue_to_remove}' została usunięta.")
-            st.rerun()
         else:
-            st.error("Nie udało się usunąć miejscówki.")
-
-with t_venues:
-    # Lista dostępnych miejscówek
-    venues_img = config.get("venues", [])
-
-    # Inicjalizacja słownika w session_state
-    if "venue_images" not in st.session_state:
-        st.session_state.venue_images = {venue: "" for venue in venues_img}
-
-    # Sekcja do wrzucania zdjęć
+            initialize_records_if_needed(new_venue=new_venue)
+            st.success(f"Miejscówka '{new_venue}' została dodana.")
+            st.experimental_rerun()
+    
     st.divider()
-    st.subheader("Dodaj zdjęcie do miejscówki")
-    selected_venue = st.selectbox("Wybierz miejscówkę", venues, label_visibility="collapsed")
-    uploaded_file = st.file_uploader("Prześlij zdjęcie", type=["png", "jpg", "jpeg"])
-
-    if uploaded_file is not None and selected_venue:
-        bucket = supabase.storage.from_('Streamlit-BG-bucket')
-        file_bytes = uploaded_file.read()
-        
-        # Ścieżka w bucketcie z unikalną nazwą dla danej miejscówki
-        file_path = f"uploads/{selected_venue}.jpg"
-        
-        # Wgrywanie zdjęcia do bucketu (możesz dodać opcję upsert, np. file_options={"upsert": "true"})
-        bucket.upload(file_path, file_bytes)
-        
-        # Pobranie publicznego URL
-        public_url = bucket.get_public_url(file_path)
-        
-        # Aktualizacja słownika w session_state
-        st.session_state.venue_images[selected_venue] = public_url
-        
-        st.success(f"Zdjęcie dla {selected_venue} przesłane do chmury!")
+    st.subheader(":red-background[Usuń miejscówkę]")
+    venues = get_venues()
+    if venues:
+        venue_to_remove = st.selectbox("Wybierz miejscówkę do usunięcia", venues, label_visibility="collapsed")
+        if st.button("Usuń miejscówkę"):
+            delete_response = supabase.table("results").delete().eq("venue", venue_to_remove).execute()
+            if delete_response.status_code == 200:
+                st.success(f"Miejscówka '{venue_to_remove}' została usunięta.")
+                st.experimental_rerun()
+            else:
+                st.error("Nie udało się usunąć miejscówki.")
+    else:
+        st.info("Brak miejscówek w bazie.")
 
 with t_category:
-    file_name = "config.json"
-
-    try:
-        with open(file_name, "r", encoding="utf-8") as file:
-            data = json.load(file)
-            st.json(data)  # Wyświetlenie sformatowanego JSON-a
-    except FileNotFoundError:
-        st.error(f"Plik {file_name} nie został znaleziony.")
-    except json.JSONDecodeError:
-        st.error(f"Plik {file_name} zawiera niepoprawny JSON.")
+    st.subheader("Aktualny stan bazy:")
+    # Wyświetlamy podsumowanie tabeli 'results'
+    response = supabase.table("results").select("*").execute()
+    if response.data:
+        st.json(response.data)
+    else:
+        st.info("Brak rekordów w bazie.")
