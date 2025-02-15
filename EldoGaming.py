@@ -50,7 +50,7 @@ def display_venue_image(selected_venue, bucket, venues: list):
             image_url = bucket.get_public_url(file_path)
             st.image(image_url, width=500)
         else:
-            st.info("Brak zdjęcia dla wybranej miejscówki.")
+            st.info(f"Brak zdjęcia dla miejscówki - {selected_venue}")
 
 # Funkcja dialogowa do edycji odpowiedzi
 @st.dialog("Edytuj odpowiedzi", width="small")

@@ -205,3 +205,15 @@ with t_venues:
         st.session_state.venue_images[selected_venue] = public_url
         
         st.success(f"Zdjęcie dla {selected_venue} przesłane do chmury!")
+
+with t_category:
+    file_name = "config.json"
+
+    try:
+        with open(file_name, "r", encoding="utf-8") as file:
+            data = json.load(file)
+            st.json(data)  # Wyświetlenie sformatowanego JSON-a
+    except FileNotFoundError:
+        st.error(f"Plik {file_name} nie został znaleziony.")
+    except json.JSONDecodeError:
+        st.error(f"Plik {file_name} zawiera niepoprawny JSON.")
