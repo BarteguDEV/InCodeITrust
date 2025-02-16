@@ -261,9 +261,9 @@ with tab1:
         st.data_editor(
             df,
             column_config={
+                "KATEGORIA": st.column_config.TextColumn("KATEGORIA", width=170),
                 "WARTOŚĆ": st.column_config.ProgressColumn(
                     "Wartość", 
-                    help="Wartość wyrażona jako progress bar",
                     format="%.1f",
                     min_value=0,
                     max_value=7.5,
