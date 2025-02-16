@@ -14,7 +14,6 @@ SUPABASE_KEY = st.secrets["supabase"]["api_key"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 bucket = supabase.storage.from_("Streamlit-BG-bucket")
 
-
 # Funkcje pomocnicze do pobierania danych z bazy
 @st.cache_data(ttl=300)
 def get_persons():
@@ -36,6 +35,14 @@ def get_categories():
     if response.data:
         return sorted(list({row["category"] for row in response.data if row.get("category")}))
     return []
+
+@st.cache_data(ttl=300)
+def get_all_results():
+    """
+    Pobiera wszystkie rekordy z tabeli `results` jednym zapytaniem.
+    """
+    response = supabase.table("results").select("person, venue, category, value").execute()
+    return response.data if response.data else []
 
 @st.cache_data(ttl=300)
 def fetch_comments(venue):
@@ -63,7 +70,6 @@ def display_comments(venue):
     else:
         st.info("Brak komentarzy dla tej miejscówki. Bądź pierwszym, który doda komentarz! 🎉")
 
-
 def display_venue_image(selected_venue, bucket, venues: list):
     """
     Sprawdza, czy dla wybranej miejscówki istnieje plik w bucketcie. 
@@ -79,7 +85,7 @@ def display_venue_image(selected_venue, bucket, venues: list):
             image_url = bucket.get_public_url(file_path)
             st.image(image_url, width=500)
         else:
-            st.info(f"Brak zdjęcia dla miejscówki")
+            st.info("Brak zdjęcia dla miejscówki")
 
 @st.dialog("Edytuj odpowiedzi", width="small")
 def edit_answers():
@@ -152,7 +158,6 @@ def edit_answers():
             except Exception as e:
                 st.error(f"Wystąpił błąd: {e}")
 
-
 @st.dialog("Dodaj komentarz", width="small")
 def add_comment_dialog():
     global venues, persons  # Upewnij się, że zmienna persons jest dostępna globalnie
@@ -196,7 +201,14 @@ with tab1:
     venues = get_venues()
     categories = get_categories()
 
-    selected_person = st.segmented_control("person picker", persons, selection_mode="single", key="persons_pills", default=persons[0] if persons else '1', label_visibility="collapsed")
+    selected_person = st.segmented_control(
+        "person picker",
+        persons,
+        selection_mode="single",
+        key="persons_pills",
+        default=persons[0] if persons else '1',
+        label_visibility="collapsed"
+    )
     selected_venue = st.selectbox(":green-background[Wybierz miejscówkę]", venues)
 
     # Zapisz wybrane wartości do session_state
@@ -207,22 +219,25 @@ with tab1:
     if "results" not in st.session_state:
         st.session_state.results = {}
 
+    # Pobierz wszystkie wyniki za jednym zapytaniem
+    all_results = get_all_results()
+
     for person in persons:
         if person not in st.session_state.results:
             st.session_state.results[person] = {}
         for venue in venues:
-            if venue not in st.session_state.results[person]:
-                # Pobierz dane z bazy dla danej pary osoba-miejscówka
-                response = supabase.table("results").select("category, value") \
-                    .eq("person", person).eq("venue", venue).execute()
-                if response.data:
-                    st.session_state.results[person][venue] = [
-                        {"KATEGORIA": entry["category"], "WARTOŚĆ": entry["value"]} for entry in response.data
-                    ]
-                else:
-                    st.session_state.results[person][venue] = [
-                        {"KATEGORIA": cat, "WARTOŚĆ": 0.0} for cat in categories
-                    ]
+            # Filtrowanie wyników dla danej pary osoba-miejscówka
+            results_for_pair = [
+                {"KATEGORIA": entry["category"], "WARTOŚĆ": entry["value"]}
+                for entry in all_results 
+                if entry["person"] == person and entry["venue"] == venue
+            ]
+            if results_for_pair:
+                st.session_state.results[person][venue] = results_for_pair
+            else:
+                st.session_state.results[person][venue] = [
+                    {"KATEGORIA": cat, "WARTOŚĆ": 0.0} for cat in categories
+                ]
 
     current_answers = st.session_state.results[selected_person][selected_venue]
 
