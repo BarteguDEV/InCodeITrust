@@ -83,7 +83,7 @@ def upload_venue_image(selected_venue, bucket):
         st.session_state["uploaded"] = False
 
     if not st.session_state["uploaded"]:  
-        uploaded_file = st.file_uploader("Wybierz zdjęcie", type=["jpg", "png", "jpeg"])
+        uploaded_file = st.file_uploader("Wybierz zdjęcie")
 
         if uploaded_file:
             file_name = f"{selected_venue}.jpg"  
