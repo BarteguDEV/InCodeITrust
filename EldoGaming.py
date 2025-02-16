@@ -90,7 +90,7 @@ def display_venue_image(selected_venue, bucket, venues: list):
 @st.dialog("Edytuj odpowiedzi", width="small")
 def edit_answers():
     global persons, venues
-    # Upewnij się, że w session_state mamy wybraną osobę i miejscówkę
+
     if "selected_person" not in st.session_state or st.session_state.selected_person is None:
         st.session_state.selected_person = persons[0] if persons else None
     if "selected_venue" not in st.session_state or st.session_state.selected_venue is None:
@@ -109,16 +109,15 @@ def edit_answers():
 
     current_answers = st.session_state.results[selected_person][selected_venue]
     
-    # Ustalona kolejność kategorii (wszystkie porównujemy w uppercase)
     ordered_categories = ["DRINK", "FOOD", "WYSTRÓJ", "OBSŁUGA", "PERFORMANCE PER PRICE", "INNE"]
-    # Filtrowanie – pomijamy ewentualne specjalne wpisy, np. "ŚREDNIA Z PUNKTÓW", "ŚREDNIA Z MIEJSCÓWKI"
+    
     sorted_answers = sorted(
         [entry for entry in current_answers if entry["KATEGORIA"] not in ["ŚREDNIA Z PUNKTÓW", "ŚREDNIA Z MIEJSCÓWKI"]],
         key=lambda entry: ordered_categories.index(entry["KATEGORIA"].upper()) 
             if entry["KATEGORIA"].upper() in ordered_categories 
             else float('inf')
     )
-    
+
     new_answers = {}
     with st.form(key="survey_edit_form"):
         for entry in sorted_answers:
@@ -139,10 +138,11 @@ def edit_answers():
         submitted = st.form_submit_button("Zapisz zmiany")
         if submitted:
             try:
-                # Aktualizacja wyników w session_state
+                # Aktualizacja wartości w session_state
                 st.session_state.results[selected_person][selected_venue] = [
                     {"KATEGORIA": cat, "WARTOŚĆ": new_answers[cat]} for cat in new_answers
                 ]
+                
                 # Zapis do bazy Supabase
                 for cat, val in new_answers.items():
                     response = supabase.table("results").select("*") \
@@ -155,18 +155,18 @@ def edit_answers():
                             "initialized": True
                         }).eq("person", selected_person).eq("venue", selected_venue).eq("category", cat).execute()
                 
-                # Wyczyść cache, aby pobrać świeże dane
+                # Wyczyść cache, aby pobrać nowe wartości
                 get_all_results.clear()
-                get_persons.clear()
-                get_venues.clear()
-                get_categories.clear()
-                
-                # Inicjalizacja i zwiększenie licznika aktualizacji (do przeładowania data_editor)
+
+                # Zwiększenie licznika aktualizacji (przeładowuje tylko dataframe)
                 if "results_update" not in st.session_state:
                     st.session_state.results_update = 0
                 st.session_state.results_update += 1
-                
+
+                # Zamknięcie okna dialogowego i wymuszenie odświeżenia
+                st.session_state.show_dialog = False
                 st.rerun()
+
             except Exception as e:
                 st.error(f"Wystąpił błąd: {e}")
 
@@ -203,7 +203,7 @@ persons = get_persons()
 venues = get_venues()
 categories = get_categories()
 
-st.title(":green[Wyjścia Melanże]")
+st.title(":green[Zbiór miejscówek i ocen]")
 st.caption('Projekt: "Kim Pan Był" v.5  Współfinansowany przez własną kieszeń. Proszę uzupełniać na bieżąco || Skala ocen od 0-7.5')
 
 tab1, tab2 = st.tabs(["Ankieta", "Wykresiki"])
@@ -256,7 +256,14 @@ with tab1:
 
     display_venue_image(selected_venue, bucket, venues)
 
+    if "show_dialog" not in st.session_state:
+        st.session_state.show_dialog = False  # Domyślnie dialog zamknięty
+
     if st.button(":blue[Edytuj odpowiedzi]"):
+        st.session_state.show_dialog = True  # Otwórz dialog
+
+    # Pokazujemy okno dialogowe tylko jeśli flaga `show_dialog` jest True
+    if st.session_state.show_dialog:
         edit_answers()
 
     # Budowanie finalnego DataFrame tylko dla wybranej pary
