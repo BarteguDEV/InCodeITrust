@@ -154,9 +154,22 @@ def edit_answers():
                             "value": val,
                             "initialized": True
                         }).eq("person", selected_person).eq("venue", selected_venue).eq("category", cat).execute()
+                
+                # Wyczyść cache, aby pobrać świeże dane
+                get_all_results.clear()
+                get_persons.clear()
+                get_venues.clear()
+                get_categories.clear()
+                
+                # Inicjalizacja i zwiększenie licznika aktualizacji (do przeładowania data_editor)
+                if "results_update" not in st.session_state:
+                    st.session_state.results_update = 0
+                st.session_state.results_update += 1
+                
                 st.rerun()
             except Exception as e:
                 st.error(f"Wystąpił błąd: {e}")
+
 
 @st.dialog("Dodaj komentarz", width="small")
 def add_comment_dialog():
@@ -260,6 +273,7 @@ with tab1:
         df = pd.DataFrame(rows)
         st.data_editor(
             df,
+            key=f"data_editor_{st.session_state.get('results_update', 0)}",
             column_config={
                 "KATEGORIA": st.column_config.TextColumn("KATEGORIA", width=170),
                 "WARTOŚĆ": st.column_config.ProgressColumn(
@@ -280,4 +294,86 @@ with tab1:
     display_comments(selected_venue)
 
 with tab2:
-    st.write("in progress")
+    # Pobieramy dane za pomocą funkcji get_all_results() i konwertujemy je do DataFrame
+    data = get_all_results()
+    df = pd.DataFrame(data)
+
+    st.title("Raporty wyników")
+
+    # Tworzymy zakładki dla raportów
+    tabs = st.tabs(["Ogólny", "Osoby", "Miejscówki", "Interaktywny"])
+
+    with tabs[0]:
+        st.header("Raport Ogólny: Średnia wartość per kategoria")
+        # Obliczamy średnią wartość dla każdej kategorii
+        category_avg = df.groupby("category")["value"].mean().reset_index()
+        st.dataframe(category_avg)
+        
+        # Wykres słupkowy
+        fig, ax = plt.subplots()
+        sns.barplot(data=category_avg, x="category", y="value", ax=ax)
+        ax.set_title("Średnia wartość per kategoria")
+        ax.set_xlabel("Kategoria")
+        ax.set_ylabel("Średnia wartość")
+        st.pyplot(fig)
+
+    with tabs[1]:
+        st.header("Raport: Średnia wartość per osoba i kategoria")
+        # Tworzymy tabelę przestawną: osoby jako wiersze, kategorie jako kolumny
+        pivot_person = df.pivot_table(index="person", columns="category", values="value", aggfunc="mean")
+        st.dataframe(pivot_person)
+        
+        # Heatmapa dla wyników per osoba
+        fig, ax = plt.subplots(figsize=(10,6))
+        sns.heatmap(pivot_person, annot=True, fmt=".1f", cmap="viridis", ax=ax)
+        ax.set_title("Heatmap: Średnia wartość per osoba i kategoria")
+        st.pyplot(fig)
+
+    with tabs[2]:
+        st.header("Raport: Średnia wartość per miejscówka i kategoria")
+        # Tworzymy tabelę przestawną: miejscówki jako wiersze, kategorie jako kolumny
+        pivot_venue = df.pivot_table(index="venue", columns="category", values="value", aggfunc="mean")
+        st.dataframe(pivot_venue)
+        
+        # Heatmapa dla wyników per miejscówka
+        fig, ax = plt.subplots(figsize=(10,6))
+        sns.heatmap(pivot_venue, annot=True, fmt=".1f", cmap="magma", ax=ax)
+        ax.set_title("Heatmap: Średnia wartość per miejscówka i kategoria")
+        st.pyplot(fig)
+
+    with tabs[3]:
+        st.header("Raport interaktywny")
+        report_choice = st.selectbox("Wybierz typ raportu", ["Wyniki dla osoby", "Wyniki dla miejscówki"])
+        
+        if report_choice == "Wyniki dla osoby":
+            # Dynamiczne pobieranie listy osób
+            persons = sorted(df["person"].unique())
+            selected_person = st.selectbox("Wybierz osobę", persons)
+            person_df = df[df["person"] == selected_person]
+            st.write("Wyniki dla osoby:", selected_person)
+            st.dataframe(person_df)
+            
+            # Uśrednienie wyników dla wybranej osoby wg kategorii
+            person_avg = person_df.groupby("category")["value"].mean().reset_index()
+            fig, ax = plt.subplots()
+            sns.barplot(data=person_avg, x="category", y="value", ax=ax)
+            ax.set_title(f"Średnia wartość dla {selected_person}")
+            ax.set_xlabel("Kategoria")
+            ax.set_ylabel("Średnia wartość")
+            st.pyplot(fig)
+        else:
+            # Dynamiczne pobieranie listy miejscówek
+            venues = sorted(df["venue"].unique())
+            selected_venue = st.selectbox("Wybierz miejscówkę", venues)
+            venue_df = df[df["venue"] == selected_venue]
+            st.write("Wyniki dla miejscówki:", selected_venue)
+            st.dataframe(venue_df)
+            
+            # Uśrednienie wyników dla wybranej miejscówki wg kategorii
+            venue_avg = venue_df.groupby("category")["value"].mean().reset_index()
+            fig, ax = plt.subplots()
+            sns.barplot(data=venue_avg, x="category", y="value", ax=ax)
+            ax.set_title(f"Średnia wartość dla {selected_venue}")
+            ax.set_xlabel("Kategoria")
+            ax.set_ylabel("Średnia wartość")
+            st.pyplot(fig)
